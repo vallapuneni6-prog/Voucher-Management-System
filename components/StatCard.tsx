@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 interface StatCardProps {
@@ -7,7 +6,7 @@ interface StatCardProps {
   color: string;
 }
 
-const StatCard: React.FC<StatCardProps> = ({ title, value, color }) => {
+export const StatCard: React.FC<StatCardProps> = ({ title, value, color }) => {
   return (
     <div className="bg-brand-surface p-4 rounded-xl shadow-lg text-center">
       <p className="text-sm font-medium text-brand-text-secondary">{title}</p>
@@ -15,5 +14,3 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, color }) => {
     </div>
   );
 };
-
-export default StatCard;

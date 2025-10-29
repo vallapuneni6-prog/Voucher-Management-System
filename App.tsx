@@ -1,24 +1,19 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import Home from './components/Home';
-import IssueVoucher from './components/IssueVoucher';
-import RedeemVoucher from './components/RedeemVoucher';
-import Login from './components/Login';
-import Users from './components/Users';
-import Outlets from './components/Outlets';
+import { login, getVouchers, addVoucher, redeemVoucher, getUsers, addUser, updateUser, deleteUser, getOutlets, addOutlet, updateOutlet, deleteOutlet } from './api';
+import { User, Voucher, VoucherStatus, Outlet } from './types';
+import { Login } from './components/Login';
+import { Home } from './components/Home';
+import { IssueVoucher } from './components/IssueVoucher';
+import { RedeemVoucher } from './components/RedeemVoucher';
+import { Users } from './components/Users';
+import { Outlets } from './components/Outlets';
 import { HomeIcon, TicketIcon, CheckCircleIcon, UsersIcon, StoreIcon, LogoutIcon } from './components/icons';
-import { Voucher, VoucherStatus, User, Outlet } from './types';
-import * as api from './api'; // Import the new API layer
 
-type AdminTab = 'home' | 'users' | 'outlets';
-type UserTab = 'home' | 'issue' | 'redeem';
-
-// A simple loading spinner component
-const LoadingSpinner: React.FC = () => (
+const LoadingSpinner = () => (
   <div className="flex justify-center items-center h-full pt-20">
     <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-brand-primary"></div>
   </div>
 );
-
 
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
@@ -27,16 +22,14 @@ const App: React.FC = () => {
       return savedUser ? JSON.parse(savedUser) : null;
     } catch (error) { return null; }
   });
-
-  const [activeTab, setActiveTab] = useState<AdminTab | UserTab>('home');
+  const [activeTab, setActiveTab] = useState('home');
   const [isLoading, setIsLoading] = useState(true);
-
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [outlets, setOutlets] = useState<Outlet[]>([]);
-  
-  const hydrateVoucherDates = (vouchers: Voucher[]): Voucher[] => {
-    return vouchers.map((v: any) => ({
+
+  const hydrateVoucherDates = (vouchers: any[]): Voucher[] => {
+    return vouchers.map((v) => ({
       ...v,
       expiryDate: new Date(v.expiryDate),
       issueDate: new Date(v.issueDate),
@@ -44,14 +37,13 @@ const App: React.FC = () => {
     }));
   };
 
-  // Fetch all data on initial load
   useEffect(() => {
     if (currentUser) {
       setIsLoading(true);
       Promise.all([
-        api.getVouchers(),
-        api.getUsers(),
-        api.getOutlets(),
+        getVouchers(),
+        getUsers(),
+        getOutlets(),
       ]).then(([vouchersData, usersData, outletsData]) => {
         setVouchers(hydrateVoucherDates(vouchersData));
         setUsers(usersData);
@@ -63,18 +55,18 @@ const App: React.FC = () => {
     }
   }, [currentUser]);
 
-
-  // Voucher status updater
   const updateVoucherStatus = useCallback(() => {
     const now = new Date();
     setVouchers(currentVouchers => {
       const needsUpdate = currentVouchers.some(v => v.status === VoucherStatus.ISSUED && v.expiryDate < now);
       if (needsUpdate) {
-          return currentVouchers.map(v => 
+          const updated = currentVouchers.map(v => 
             (v.status === VoucherStatus.ISSUED && v.expiryDate < now)
               ? { ...v, status: VoucherStatus.EXPIRED }
               : v
           );
+          localStorage.setItem('vouchers', JSON.stringify(updated));
+          return updated;
       }
       return currentVouchers;
     });
@@ -82,13 +74,12 @@ const App: React.FC = () => {
 
   useEffect(() => {
     updateVoucherStatus();
-    const interval = setInterval(updateVoucherStatus, 60 * 60 * 1000); // Check hourly
+    const interval = setInterval(updateVoucherStatus, 60 * 60 * 1000); // Check every hour
     return () => clearInterval(interval);
   }, [updateVoucherStatus]);
-  
-  // Login/Logout Handlers
+
   const handleLogin = async (username: string, password: string): Promise<boolean> => {
-    const user = await api.login(username, password);
+    const user = await login(username, password);
     if (user) {
       setCurrentUser(user);
       localStorage.setItem('currentUser', JSON.stringify(user));
@@ -103,8 +94,7 @@ const App: React.FC = () => {
     localStorage.removeItem('currentUser');
   };
 
-  // CRUD Handlers
-  const handleIssueVoucher = async (newVoucher: Omit<Voucher, 'id' | 'issueDate' | 'status'>) => {
+  const handleIssueVoucher = async (newVoucher: Omit<Voucher, 'id' | 'issueDate' | 'status' | 'outletId'>) => {
     if (currentUser?.role !== 'user' || !currentUser.outletId) return;
     const voucherData = {
       ...newVoucher,
@@ -112,12 +102,12 @@ const App: React.FC = () => {
       issueDate: new Date(),
       status: VoucherStatus.ISSUED,
     };
-    const createdVoucher = await api.addVoucher(voucherData);
+    const createdVoucher = await addVoucher(voucherData as any);
     setVouchers(prev => [...prev, ...hydrateVoucherDates([createdVoucher])]);
   };
 
-  const handleRedeemVoucher = async (voucherId: string): Promise<boolean> => {
-    const redeemedVoucher = await api.redeemVoucher(voucherId);
+  const handleRedeemVoucher = async (voucherId: string, redemptionBillNo: string): Promise<boolean> => {
+    const redeemedVoucher = await redeemVoucher(voucherId, redemptionBillNo);
     if (redeemedVoucher) {
       setVouchers(prev => prev.map(v => v.id === voucherId ? hydrateVoucherDates([redeemedVoucher])[0] : v));
       return true;
@@ -126,111 +116,162 @@ const App: React.FC = () => {
   };
 
   const handleAddUser = async (user: Omit<User, 'id'>) => {
-    const newUser = await api.addUser(user);
+    const newUser = await addUser(user);
     setUsers(p => [...p, newUser]);
   };
+
   const handleUpdateUser = async (user: User) => {
-    const updatedUser = await api.updateUser(user);
+    const updatedUser = await updateUser(user);
     setUsers(p => p.map(u => u.id === updatedUser.id ? updatedUser : u));
   };
+
   const handleDeleteUser = async (id: string) => {
-    await api.deleteUser(id);
+    await deleteUser(id);
     setUsers(p => p.filter(u => u.id !== id));
   };
 
   const handleAddOutlet = async (outlet: Omit<Outlet, 'id'>) => {
-    const newOutlet = await api.addOutlet(outlet);
+    const newOutlet = await addOutlet(outlet);
     setOutlets(p => [...p, newOutlet]);
   };
+
   const handleUpdateOutlet = async (outlet: Outlet) => {
-    const updatedOutlet = await api.updateOutlet(outlet);
+    const updatedOutlet = await updateOutlet(outlet);
     setOutlets(p => p.map(o => o.id === updatedOutlet.id ? updatedOutlet : o));
   };
+
   const handleDeleteOutlet = async (id: string) => {
-    await api.deleteOutlet(id);
-    // Refetch users since outlets affect them
-    api.getUsers().then(setUsers);
+    await deleteOutlet(id);
+    getUsers().then(setUsers);
     setOutlets(p => p.filter(o => o.id !== id));
   };
 
-  // Memoized data filtering
   const userVouchers = useMemo(() => {
     if (currentUser?.role === 'admin') return vouchers;
     return vouchers.filter(v => v.outletId === currentUser?.outletId);
   }, [vouchers, currentUser]);
 
-  // Render logic
+  const currentUserOutletName = useMemo(() => {
+    if (!currentUser || !currentUser.outletId) return 'N/A';
+    return outlets.find(o => o.id === currentUser.outletId)?.name ?? 'Unknown Outlet';
+  }, [currentUser, outlets]);
+
   if (!currentUser) {
     return <Login onLogin={handleLogin} />;
   }
 
-  const TabButton: React.FC<{ tab: AdminTab | UserTab; icon: React.ReactElement; label: string }> = ({ tab, icon, label }) => (
-    <button
-      onClick={() => setActiveTab(tab)}
-      className={`flex flex-col items-center justify-center w-full pt-2 pb-1 transition-colors duration-200 ${
-        activeTab === tab ? 'text-brand-primary' : 'text-brand-text-secondary hover:text-brand-text-primary'
-      }`}
-    >
-      {icon}
-      <span className="text-xs mt-1">{label}</span>
-    </button>
-  );
-  
   const renderAdminContent = () => {
-    switch (activeTab as AdminTab) {
+    switch (activeTab) {
       case 'users': return <Users users={users} outlets={outlets} onAdd={handleAddUser} onUpdate={handleUpdateUser} onDelete={handleDeleteUser} />;
       case 'outlets': return <Outlets outlets={outlets} onAdd={handleAddOutlet} onUpdate={handleUpdateOutlet} onDelete={handleDeleteOutlet} />;
       case 'home':
       default: return <Home vouchers={vouchers} outlets={outlets} isAdmin={true} />;
     }
   };
-  
+
   const renderUserContent = () => {
-    switch (activeTab as UserTab) {
-      case 'issue': return <IssueVoucher vouchers={userVouchers} outlets={outlets} onIssueVoucher={handleIssueVoucher} />;
-      case 'redeem': return <RedeemVoucher vouchers={vouchers} redeemedVouchersForOutlet={userVouchers.filter(v => v.status === VoucherStatus.REDEEMED)} outlets={outlets} onRedeemVoucher={handleRedeemVoucher} />;
+    switch (activeTab) {
+      case 'issue': return <IssueVoucher vouchers={userVouchers} onIssueVoucher={handleIssueVoucher} outletName={currentUserOutletName} />;
+      case 'redeem': return <RedeemVoucher vouchers={vouchers} redeemedVouchersForOutlet={userVouchers.filter(v => v.status === VoucherStatus.REDEEMED)} onRedeemVoucher={handleRedeemVoucher} />;
       case 'home':
       default: return <Home vouchers={userVouchers} outlets={outlets} isAdmin={false} />;
     }
-  }
+  };
+
+  // FIX: Replaced JSX.Element with React.ReactElement to resolve "Cannot find namespace 'JSX'" error.
+  const TabButton = ({ tab, icon, label }: { tab: string, icon: React.ReactElement, label: string }) => (
+    <button onClick={() => setActiveTab(tab)} className={`flex flex-col items-center justify-center w-full pt-2 pb-1 transition-colors duration-200 ${activeTab === tab ? 'text-brand-primary' : 'text-brand-text-secondary hover:text-brand-text-primary'}`}>
+      {icon}
+      <span className="text-xs mt-1">{label}</span>
+    </button>
+  );
+
+  // FIX: Replaced JSX.Element with React.ReactElement to resolve "Cannot find namespace 'JSX'" error.
+  const SidebarButton = ({ tab, icon, label }: { tab: string, icon: React.ReactElement, label: string }) => (
+    <button onClick={() => setActiveTab(tab)} className={`flex items-center w-full px-4 py-3 transition-colors duration-200 rounded-lg ${activeTab === tab ? 'bg-brand-primary text-white' : 'text-brand-text-secondary hover:bg-gray-700 hover:text-brand-text-primary'}`}>
+      {icon}
+      <span className="ml-4 font-medium">{label}</span>
+    </button>
+  );
+
+  const adminNav = (
+    <>
+      <SidebarButton tab="home" icon={<HomeIcon />} label="Home" />
+      <SidebarButton tab="users" icon={<UsersIcon />} label="Users" />
+      <SidebarButton tab="outlets" icon={<StoreIcon />} label="Outlets" />
+    </>
+  );
+
+  const userNav = (
+    <>
+      <SidebarButton tab="home" icon={<HomeIcon />} label="Home" />
+      <SidebarButton tab="issue" icon={<TicketIcon />} label="Issue Voucher" />
+      <SidebarButton tab="redeem" icon={<CheckCircleIcon />} label="Redeem Voucher" />
+    </>
+  );
+
+  const adminMobileNav = (
+     <>
+      <TabButton tab="home" icon={<HomeIcon />} label="Home" />
+      <TabButton tab="users" icon={<UsersIcon />} label="Users" />
+      <TabButton tab="outlets" icon={<StoreIcon />} label="Outlets" />
+    </>
+  );
+
+  const userMobileNav = (
+     <>
+      <TabButton tab="home" icon={<HomeIcon />} label="Home" />
+      <TabButton tab="issue" icon={<TicketIcon />} label="Issue Voucher" />
+      <TabButton tab="redeem" icon={<CheckCircleIcon />} label="Redeem Voucher" />
+    </>
+  );
 
   return (
-    <div className="h-screen w-screen bg-brand-background text-brand-text-primary font-sans flex flex-col">
-       <header className="flex-shrink-0 bg-brand-surface border-b border-gray-700">
-         <div className="max-w-md mx-auto p-4 flex justify-between items-center">
-           <div className="text-sm">
-             Welcome, <span className="font-bold capitalize">{currentUser.username}</span> ({currentUser.role})
+    <div className="h-screen w-screen bg-brand-background text-brand-text-primary font-sans flex overflow-hidden">
+      {/* Sidebar for desktop */}
+      <aside className="hidden md:flex flex-col w-64 bg-brand-surface border-r border-gray-700 flex-shrink-0">
+        <div className="h-20 flex items-center px-6 border-b border-gray-700">
+          <TicketIcon />
+          <h1 className="ml-3 text-xl font-bold">Voucher Mgmt</h1>
+        </div>
+        <nav className="flex-grow p-4 space-y-2">
+          {currentUser.role === 'admin' ? adminNav : userNav}
+        </nav>
+        <div className="p-4 border-t border-gray-700">
+          <div className="text-sm">Welcome, <span className="font-bold capitalize">{currentUser.username}</span></div>
+          <div className="text-xs text-brand-text-secondary">({currentUser.role})</div>
+          <button onClick={handleLogout} className="w-full mt-4 flex items-center justify-center text-sm text-brand-text-secondary hover:text-brand-text-primary transition-colors p-2 rounded-lg bg-gray-700 hover:bg-gray-600">
+            <LogoutIcon />
+            <span className="ml-2">Logout</span>
+          </button>
+        </div>
+      </aside>
+
+      <div className="flex-1 flex flex-col">
+        {/* Header for mobile */}
+        <header className="flex-shrink-0 bg-brand-surface border-b border-gray-700 md:hidden">
+           <div className="p-4 flex justify-between items-center">
+             <div className="text-sm">Welcome, <span className="font-bold capitalize">{currentUser.username}</span> ({currentUser.role})</div>
+            <button onClick={handleLogout} className="flex items-center text-sm text-brand-text-secondary hover:text-brand-text-primary transition-colors p-2 -mr-2 rounded-md">
+              <LogoutIcon />
+            </button>
            </div>
-           <button onClick={handleLogout} className="flex items-center text-sm text-brand-text-secondary hover:text-brand-text-primary transition-colors p-2 -mr-2 rounded-md">
-             <LogoutIcon />
-             <span className="ml-2">Logout</span>
-           </button>
-         </div>
-       </header>
+        </header>
 
-      <div className="flex-grow overflow-y-auto pb-20">
-        <div className="max-w-md mx-auto p-4">
+        {/* Main Content */}
+        <main className="flex-1 overflow-y-auto pb-16 md:pb-0">
+          <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
             {isLoading ? <LoadingSpinner /> : (currentUser.role === 'admin' ? renderAdminContent() : renderUserContent())}
-        </div>
-      </div>
+          </div>
+        </main>
 
-      <nav className="fixed bottom-0 left-0 right-0 h-16 bg-brand-surface border-t border-gray-700 shadow-lg">
-        <div className="max-w-md mx-auto flex h-full">
-          {currentUser.role === 'admin' ? (
-            <>
-              <TabButton tab="home" icon={<HomeIcon />} label="Home" />
-              <TabButton tab="users" icon={<UsersIcon />} label="Users" />
-              <TabButton tab="outlets" icon={<StoreIcon />} label="Outlets" />
-            </>
-          ) : (
-            <>
-              <TabButton tab="home" icon={<HomeIcon />} label="Home" />
-              <TabButton tab="issue" icon={<TicketIcon />} label="Issue Voucher" />
-              <TabButton tab="redeem" icon={<CheckCircleIcon />} label="Redeem Voucher" />
-            </>
-          )}
-        </div>
-      </nav>
+        {/* Bottom Nav for mobile */}
+        <nav className="fixed bottom-0 left-0 right-0 h-16 bg-brand-surface border-t border-gray-700 shadow-lg md:hidden">
+          <div className="flex h-full">
+            {currentUser.role === 'admin' ? adminMobileNav : userMobileNav}
+          </div>
+        </nav>
+      </div>
     </div>
   );
 };

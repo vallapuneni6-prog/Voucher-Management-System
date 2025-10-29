@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Outlet } from '../types';
 
 interface OutletsProps {
@@ -8,7 +8,7 @@ interface OutletsProps {
   onDelete: (id: string) => Promise<void>;
 }
 
-const Outlets: React.FC<OutletsProps> = ({ outlets, onAdd, onUpdate, onDelete }) => {
+export const Outlets: React.FC<OutletsProps> = ({ outlets, onAdd, onUpdate, onDelete }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentOutlet, setCurrentOutlet] = useState<Outlet | Omit<Outlet, 'id'> | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -25,10 +25,24 @@ const Outlets: React.FC<OutletsProps> = ({ outlets, onAdd, onUpdate, onDelete })
     setIsModalOpen(true);
   };
 
-  const closeModal = () => {
+  const closeModal = useCallback(() => {
     setIsModalOpen(false);
     setCurrentOutlet(null);
-  };
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        closeModal();
+      }
+    };
+    if (isModalOpen) {
+      document.addEventListener('keydown', handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isModalOpen, closeModal]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!currentOutlet) return;
@@ -51,14 +65,10 @@ const Outlets: React.FC<OutletsProps> = ({ outlets, onAdd, onUpdate, onDelete })
     <div>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-brand-text-primary">Manage Outlets</h1>
-        <button
-          onClick={openModalForNew}
-          className="bg-brand-primary text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-indigo-500 transition-colors"
-        >
+        <button onClick={openModalForNew} className="bg-brand-primary text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-indigo-500 transition-colors">
           New Outlet
         </button>
       </div>
-      
       <div className="space-y-3">
         {outlets.length > 0 ? (
           outlets.map(outlet => (
@@ -79,9 +89,14 @@ const Outlets: React.FC<OutletsProps> = ({ outlets, onAdd, onUpdate, onDelete })
       </div>
 
       {isModalOpen && currentOutlet && (
-        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="outlet-dialog-title"
+        >
           <div className="bg-brand-surface rounded-xl p-6 w-full max-w-sm">
-            <h2 className="text-2xl font-bold mb-4 text-brand-text-primary">{isEditing ? 'Edit Outlet' : 'Create Outlet'}</h2>
+            <h2 id="outlet-dialog-title" className="text-2xl font-bold mb-4 text-brand-text-primary">{isEditing ? 'Edit Outlet' : 'Create Outlet'}</h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               <input type="text" name="name" placeholder="Outlet Name" value={currentOutlet.name} onChange={handleChange} required className="w-full bg-gray-700 text-white p-3 rounded-lg border border-gray-600 focus:outline-none focus:ring-2 focus:ring-brand-primary" />
               <input type="text" name="location" placeholder="Location" value={currentOutlet.location} onChange={handleChange} required className="w-full bg-gray-700 text-white p-3 rounded-lg border border-gray-600 focus:outline-none focus:ring-2 focus:ring-brand-primary" />
@@ -96,5 +111,3 @@ const Outlets: React.FC<OutletsProps> = ({ outlets, onAdd, onUpdate, onDelete })
     </div>
   );
 };
-
-export default Outlets;

@@ -1,5 +1,5 @@
 {
-  "name": " Voucher Management System-Mobile",
-  "description": "A mobile-first application to issue, redeem, and track digital vouchers. It provides statistics on voucher activity.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [],
+  "name": "",
+  "description": ""
 }

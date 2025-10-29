@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { User, Outlet, Role } from '../types';
+import React, { useState, useCallback, useEffect } from 'react';
+import { User, Outlet } from '../types';
 
 interface UsersProps {
   users: User[];
@@ -9,7 +9,7 @@ interface UsersProps {
   onDelete: (id: string) => Promise<void>;
 }
 
-const Users: React.FC<UsersProps> = ({ users, outlets, onAdd, onUpdate, onDelete }) => {
+export const Users: React.FC<UsersProps> = ({ users, outlets, onAdd, onUpdate, onDelete }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | Omit<User, 'id'> | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -26,10 +26,24 @@ const Users: React.FC<UsersProps> = ({ users, outlets, onAdd, onUpdate, onDelete
     setIsModalOpen(true);
   };
 
-  const closeModal = () => {
+  const closeModal = useCallback(() => {
     setIsModalOpen(false);
     setCurrentUser(null);
-  };
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        closeModal();
+      }
+    };
+    if (isModalOpen) {
+      document.addEventListener('keydown', handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isModalOpen, closeModal]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     if (!currentUser) return;
@@ -40,7 +54,6 @@ const Users: React.FC<UsersProps> = ({ users, outlets, onAdd, onUpdate, onDelete
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser) return;
-
     if (isEditing) {
       await onUpdate(currentUser as User);
     } else {
@@ -52,20 +65,16 @@ const Users: React.FC<UsersProps> = ({ users, outlets, onAdd, onUpdate, onDelete
   const getOutletName = (outletId?: string) => {
     if (!outletId) return 'N/A';
     return outlets.find(o => o.id === outletId)?.name ?? 'Unknown';
-  }
+  };
 
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-brand-text-primary">Manage Users</h1>
-        <button
-          onClick={openModalForNew}
-          className="bg-brand-primary text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-indigo-500 transition-colors"
-        >
+        <button onClick={openModalForNew} className="bg-brand-primary text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-indigo-500 transition-colors">
           New User
         </button>
       </div>
-      
       <div className="space-y-3">
         {users.length > 0 ? (
           users.map(user => (
@@ -86,12 +95,25 @@ const Users: React.FC<UsersProps> = ({ users, outlets, onAdd, onUpdate, onDelete
       </div>
 
       {isModalOpen && currentUser && (
-        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="user-dialog-title"
+        >
           <div className="bg-brand-surface rounded-xl p-6 w-full max-w-sm">
-            <h2 className="text-2xl font-bold mb-4 text-brand-text-primary">{isEditing ? 'Edit User' : 'Create User'}</h2>
+            <h2 id="user-dialog-title" className="text-2xl font-bold mb-4 text-brand-text-primary">{isEditing ? 'Edit User' : 'Create User'}</h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               <input type="text" name="username" placeholder="Username" value={currentUser.username} onChange={handleChange} required className="w-full bg-gray-700 text-white p-3 rounded-lg border border-gray-600 focus:outline-none focus:ring-2 focus:ring-brand-primary" />
-              <input type="password" name="password" placeholder="Password" value={currentUser.password} onChange={handleChange} required={!isEditing} className="w-full bg-gray-700 text-white p-3 rounded-lg border border-gray-600 focus:outline-none focus:ring-2 focus:ring-brand-primary" />
+              <input 
+                type="password" 
+                name="password" 
+                placeholder={isEditing ? "Leave blank to keep current" : "Password"}
+                value={currentUser.password || ''} 
+                onChange={handleChange} 
+                required={!isEditing} 
+                className="w-full bg-gray-700 text-white p-3 rounded-lg border border-gray-600 focus:outline-none focus:ring-2 focus:ring-brand-primary" 
+              />
               <select name="role" value={currentUser.role} onChange={handleChange} className="w-full bg-gray-700 text-white p-3 rounded-lg border border-gray-600 focus:outline-none focus:ring-2 focus:ring-brand-primary">
                 <option value="user">User</option>
                 <option value="admin">Admin</option>
@@ -111,5 +133,3 @@ const Users: React.FC<UsersProps> = ({ users, outlets, onAdd, onUpdate, onDelete
     </div>
   );
 };
-
-export default Users;

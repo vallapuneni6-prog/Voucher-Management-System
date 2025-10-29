@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
-import { Voucher, VoucherStatus, Outlet } from '../types';
-import StatCard from './StatCard';
+import React, { useMemo, useState } from 'react';
+import { Voucher, Outlet, VoucherStatus } from '../types';
+import { StatCard } from './StatCard';
 
 interface HomeProps {
   vouchers: Voucher[];
@@ -8,24 +8,24 @@ interface HomeProps {
   isAdmin: boolean;
 }
 
-const statusStyles: { [key in VoucherStatus]: string } = {
-  [VoucherStatus.ISSUED]: 'bg-blue-500 text-blue-100',
-  [VoucherStatus.REDEEMED]: 'bg-green-500 text-green-100',
-  [VoucherStatus.EXPIRED]: 'bg-red-500 text-red-100',
-};
-
-const Home: React.FC<HomeProps> = ({ vouchers, outlets, isAdmin }) => {
+export const Home: React.FC<HomeProps> = ({ vouchers, outlets, isAdmin }) => {
   const [selectedOutletId, setSelectedOutletId] = useState('all');
+
+  const statusStyles: { [key in VoucherStatus]: string } = {
+    [VoucherStatus.ISSUED]: 'bg-blue-500 text-blue-100',
+    [VoucherStatus.REDEEMED]: 'bg-green-500 text-green-100',
+    [VoucherStatus.EXPIRED]: 'bg-red-500 text-red-100',
+  };
 
   const getOutletName = (outletId: string) => {
     return outlets.find(o => o.id === outletId)?.name ?? 'Unknown Outlet';
   };
-  
+
   const vouchersToDisplay = useMemo(() => {
     if (isAdmin && selectedOutletId !== 'all') {
       return vouchers.filter(v => v.outletId === selectedOutletId);
     }
-    return vouchers; // For admin 'all' view or the pre-filtered user view
+    return vouchers;
   }, [vouchers, selectedOutletId, isAdmin]);
 
   const now = new Date();
@@ -33,15 +33,15 @@ const Home: React.FC<HomeProps> = ({ vouchers, outlets, isAdmin }) => {
   const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
 
   const newVouchers = vouchersToDisplay.filter(v => 
-    v.issueDate >= startOfMonth && v.issueDate <= endOfMonth
+    new Date(v.issueDate) >= startOfMonth && new Date(v.issueDate) <= endOfMonth
   ).length;
 
   const redeemedVouchers = vouchersToDisplay.filter(v => 
-    v.redeemedDate && v.redeemedDate >= startOfMonth && v.redeemedDate <= endOfMonth
+    v.redeemedDate && new Date(v.redeemedDate) >= startOfMonth && new Date(v.redeemedDate) <= endOfMonth
   ).length;
-
+    
   const expiredVouchers = vouchersToDisplay.filter(
-    v => v.status === VoucherStatus.EXPIRED && v.expiryDate >= startOfMonth && v.expiryDate <= endOfMonth
+    v => v.status === VoucherStatus.EXPIRED && new Date(v.expiryDate) >= startOfMonth && new Date(v.expiryDate) <= endOfMonth
   ).length;
 
   return (
@@ -53,8 +53,8 @@ const Home: React.FC<HomeProps> = ({ vouchers, outlets, isAdmin }) => {
 
       {isAdmin && (
         <div className="max-w-xs mx-auto">
-          <select
-            value={selectedOutletId}
+          <select 
+            value={selectedOutletId} 
             onChange={(e) => setSelectedOutletId(e.target.value)}
             className="w-full bg-brand-surface text-white p-2 rounded-lg border border-gray-600 focus:outline-none focus:ring-2 focus:ring-brand-primary"
           >
@@ -65,7 +65,7 @@ const Home: React.FC<HomeProps> = ({ vouchers, outlets, isAdmin }) => {
           </select>
         </div>
       )}
-      
+
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard title="New Vouchers" value={newVouchers} color="text-brand-primary" />
         <StatCard title="Redeemed Vouchers" value={redeemedVouchers} color="text-brand-secondary" />
@@ -105,14 +105,12 @@ const Home: React.FC<HomeProps> = ({ vouchers, outlets, isAdmin }) => {
               </tbody>
             </table>
           ) : (
-            <div className="text-center py-10 text-brand-text-secondary">
+             <div className="text-center py-10 text-brand-text-secondary">
               No voucher data to display for the selected filter.
-            </div>
+             </div>
           )}
         </div>
       </div>
     </div>
   );
 };
-
-export default Home;

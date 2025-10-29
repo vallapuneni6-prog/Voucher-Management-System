@@ -1,10 +1,9 @@
-import { User, Outlet, Voucher, VoucherStatus } from './types';
+import { User, Voucher, VoucherStatus, Outlet } from './types';
 import { SEED_OUTLETS, SEED_USERS, SEED_VOUCHERS } from './seedData';
 
-const MOCK_API_LATENCY = 500; // ms
+const MOCK_API_LATENCY = 500;
 
-// Helper to get data from localStorage, seeding if necessary
-const getFromStorage = <T,>(key: string, seedData: T[]): T[] => {
+const getFromStorage = (key: string, seedData: any[]) => {
   try {
     const stored = localStorage.getItem(key);
     if (stored) {
@@ -19,22 +18,20 @@ const getFromStorage = <T,>(key: string, seedData: T[]): T[] => {
   }
 };
 
-// --- AUTH API ---
 export const login = (username: string, password: string): Promise<User | null> => {
   return new Promise((resolve) => {
     setTimeout(() => {
-      const users = getFromStorage<User>('users', SEED_USERS);
+      const users: User[] = getFromStorage('users', SEED_USERS);
       const user = users.find(u => u.username === username && u.password === password);
       resolve(user || null);
     }, MOCK_API_LATENCY);
   });
 };
 
-// --- VOUCHER API ---
 export const getVouchers = (): Promise<Voucher[]> => {
   return new Promise((resolve) => {
     setTimeout(() => {
-      const vouchers = getFromStorage<Voucher>('vouchers', SEED_VOUCHERS);
+      const vouchers = getFromStorage('vouchers', SEED_VOUCHERS);
       resolve(vouchers);
     }, MOCK_API_LATENCY);
   });
@@ -43,7 +40,7 @@ export const getVouchers = (): Promise<Voucher[]> => {
 export const addVoucher = (newVoucherData: Omit<Voucher, 'id'>): Promise<Voucher> => {
   return new Promise((resolve) => {
     setTimeout(() => {
-      const vouchers = getFromStorage<Voucher>('vouchers', SEED_VOUCHERS);
+      const vouchers: Voucher[] = getFromStorage('vouchers', SEED_VOUCHERS);
       const newVoucher: Voucher = {
         ...newVoucherData,
         id: `VC-${Math.random().toString(36).substr(2, 8).toUpperCase()}`,
@@ -55,14 +52,19 @@ export const addVoucher = (newVoucherData: Omit<Voucher, 'id'>): Promise<Voucher
   });
 };
 
-export const redeemVoucher = (voucherId: string): Promise<Voucher | null> => {
+export const redeemVoucher = (voucherId: string, redemptionBillNo: string): Promise<Voucher | null> => {
     return new Promise((resolve) => {
         setTimeout(() => {
-            const vouchers = getFromStorage<Voucher>('vouchers', SEED_VOUCHERS);
+            const vouchers: Voucher[] = getFromStorage('vouchers', SEED_VOUCHERS);
             let redeemedVoucher: Voucher | null = null;
             const updatedVouchers = vouchers.map(v => {
                 if (v.id === voucherId && v.status === VoucherStatus.ISSUED) {
-                    redeemedVoucher = { ...v, status: VoucherStatus.REDEEMED, redeemedDate: new Date() };
+                    redeemedVoucher = { 
+                        ...v, 
+                        status: VoucherStatus.REDEEMED, 
+                        redeemedDate: new Date(),
+                        redemptionBillNo: redemptionBillNo,
+                    };
                     return redeemedVoucher;
                 }
                 return v;
@@ -76,11 +78,10 @@ export const redeemVoucher = (voucherId: string): Promise<Voucher | null> => {
     });
 };
 
-// --- USER API ---
 export const getUsers = (): Promise<User[]> => {
     return new Promise((resolve) => {
         setTimeout(() => {
-            resolve(getFromStorage<User>('users', SEED_USERS));
+            resolve(getFromStorage('users', SEED_USERS));
         }, MOCK_API_LATENCY);
     });
 };
@@ -88,7 +89,7 @@ export const getUsers = (): Promise<User[]> => {
 export const addUser = (userData: Omit<User, 'id'>): Promise<User> => {
     return new Promise((resolve) => {
         setTimeout(() => {
-            const users = getFromStorage<User>('users', SEED_USERS);
+            const users: User[] = getFromStorage('users', SEED_USERS);
             const newUser: User = { ...userData, id: `u-${Date.now()}` };
             const updatedUsers = [...users, newUser];
             localStorage.setItem('users', JSON.stringify(updatedUsers));
@@ -100,7 +101,7 @@ export const addUser = (userData: Omit<User, 'id'>): Promise<User> => {
 export const updateUser = (updatedUserData: User): Promise<User> => {
     return new Promise((resolve) => {
         setTimeout(() => {
-            const users = getFromStorage<User>('users', SEED_USERS);
+            const users: User[] = getFromStorage('users', SEED_USERS);
             const updatedUsers = users.map(u => u.id === updatedUserData.id ? updatedUserData : u);
             localStorage.setItem('users', JSON.stringify(updatedUsers));
             resolve(updatedUserData);
@@ -111,7 +112,7 @@ export const updateUser = (updatedUserData: User): Promise<User> => {
 export const deleteUser = (userId: string): Promise<void> => {
     return new Promise((resolve) => {
         setTimeout(() => {
-            const users = getFromStorage<User>('users', SEED_USERS);
+            const users: User[] = getFromStorage('users', SEED_USERS);
             const updatedUsers = users.filter(u => u.id !== userId);
             localStorage.setItem('users', JSON.stringify(updatedUsers));
             resolve();
@@ -119,11 +120,10 @@ export const deleteUser = (userId: string): Promise<void> => {
     });
 };
 
-// --- OUTLET API ---
 export const getOutlets = (): Promise<Outlet[]> => {
     return new Promise((resolve) => {
         setTimeout(() => {
-            resolve(getFromStorage<Outlet>('outlets', SEED_OUTLETS));
+            resolve(getFromStorage('outlets', SEED_OUTLETS));
         }, MOCK_API_LATENCY);
     });
 };
@@ -131,7 +131,7 @@ export const getOutlets = (): Promise<Outlet[]> => {
 export const addOutlet = (outletData: Omit<Outlet, 'id'>): Promise<Outlet> => {
     return new Promise((resolve) => {
         setTimeout(() => {
-            const outlets = getFromStorage<Outlet>('outlets', SEED_OUTLETS);
+            const outlets: Outlet[] = getFromStorage('outlets', SEED_OUTLETS);
             const newOutlet: Outlet = { ...outletData, id: `o-${Date.now()}` };
             const updatedOutlets = [...outlets, newOutlet];
             localStorage.setItem('outlets', JSON.stringify(updatedOutlets));
@@ -143,7 +143,7 @@ export const addOutlet = (outletData: Omit<Outlet, 'id'>): Promise<Outlet> => {
 export const updateOutlet = (updatedOutletData: Outlet): Promise<Outlet> => {
     return new Promise((resolve) => {
         setTimeout(() => {
-            const outlets = getFromStorage<Outlet>('outlets', SEED_OUTLETS);
+            const outlets: Outlet[] = getFromStorage('outlets', SEED_OUTLETS);
             const updatedOutlets = outlets.map(o => o.id === updatedOutletData.id ? updatedOutletData : o);
             localStorage.setItem('outlets', JSON.stringify(updatedOutlets));
             resolve(updatedOutletData);
@@ -154,12 +154,12 @@ export const updateOutlet = (updatedOutletData: Outlet): Promise<Outlet> => {
 export const deleteOutlet = (outletId: string): Promise<void> => {
     return new Promise((resolve) => {
         setTimeout(() => {
-            // Also unassign users from this outlet
-            const users = getFromStorage<User>('users', SEED_USERS);
+            // Remove outletId from any user assigned to this outlet
+            const users: User[] = getFromStorage('users', SEED_USERS);
             const updatedUsers = users.map(u => u.outletId === outletId ? {...u, outletId: undefined} : u);
             localStorage.setItem('users', JSON.stringify(updatedUsers));
 
-            const outlets = getFromStorage<Outlet>('outlets', SEED_OUTLETS);
+            const outlets: Outlet[] = getFromStorage('outlets', SEED_OUTLETS);
             const updatedOutlets = outlets.filter(o => o.id !== outletId);
             localStorage.setItem('outlets', JSON.stringify(updatedOutlets));
             resolve();

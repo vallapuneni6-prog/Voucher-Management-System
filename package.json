@@ -1,5 +1,5 @@
 {
-  "name": "voucher-management-system-mobile",
+  "name": "",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -10,7 +10,6 @@
   },
   "dependencies": {
     "react": "^19.2.0",
-    "recharts": "^3.3.0",
     "react-dom": "^19.2.0"
   },
   "devDependencies": {

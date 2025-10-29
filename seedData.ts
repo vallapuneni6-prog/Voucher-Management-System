@@ -1,20 +1,17 @@
-import { User, Outlet, Voucher, VoucherStatus } from './types';
+import { Outlet, User, Voucher, VoucherStatus } from './types';
 
-// Seed Outlets
 export const SEED_OUTLETS: Outlet[] = [
   { id: 'o-1', name: 'Downtown Branch', location: '123 Main St' },
   { id: 'o-2', name: 'Uptown Mall', location: '456 Market Ave' },
 ];
 
-// Seed Users
 export const SEED_USERS: User[] = [
   { id: 'u-admin', username: 'admin', password: 'admin123', role: 'admin' },
   { id: 'u-1', username: 'user1', password: 'user123', role: 'user', outletId: 'o-1' },
   { id: 'u-2', username: 'user2', password: 'user123', role: 'user', outletId: 'o-2' },
 ];
 
-// Seed Vouchers
-export const SEED_VOUCHERS: Voucher[] = [
+export const SEED_VOUCHERS: any[] = [
   {
     id: 'VC-ABC123',
     partnerName: 'John Doe',
@@ -24,6 +21,7 @@ export const SEED_VOUCHERS: Voucher[] = [
     expiryDate: new Date(new Date().setDate(new Date().getDate() + 25)),
     status: VoucherStatus.ISSUED,
     discountPercentage: 15,
+    billNo: 'B-202401',
   },
   {
     id: 'VC-DEF456',
@@ -34,6 +32,7 @@ export const SEED_VOUCHERS: Voucher[] = [
     expiryDate: new Date(new Date().setDate(new Date().getDate() + 20)),
     status: VoucherStatus.ISSUED,
     discountPercentage: 20,
+    billNo: 'B-202402',
   },
   {
     id: 'VC-GHI789',
@@ -45,6 +44,8 @@ export const SEED_VOUCHERS: Voucher[] = [
     status: VoucherStatus.REDEEMED,
     redeemedDate: new Date(new Date().setDate(new Date().getDate() - 1)),
     discountPercentage: 10,
+    billNo: 'B-202403',
+    redemptionBillNo: 'R-202405',
   },
     {
     id: 'VC-JKL012',
@@ -55,5 +56,6 @@ export const SEED_VOUCHERS: Voucher[] = [
     expiryDate: new Date(new Date().setDate(new Date().getDate() - 10)),
     status: VoucherStatus.EXPIRED,
     discountPercentage: 25,
+    billNo: 'B-202404',
   },
 ];
