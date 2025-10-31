@@ -31,7 +31,7 @@ export const downloadVoucherAsImage = (voucher: Voucher) => {
   ctx.font = '24px sans-serif';
   ctx.textAlign = 'left';
   const details = [
-    `Partner Name: ${voucher.partnerName}`,
+    `Recipient Name: ${voucher.recipientName}`,
     `Voucher Code: ${voucher.id}`,
     `Bill No: ${voucher.billNo}`,
     `Redeemed On: ${voucher.redeemedDate ? new Date(voucher.redeemedDate).toLocaleDateString() : 'Not Redeemed'}`,

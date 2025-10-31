@@ -38,8 +38,8 @@ export const downloadBrandedVoucher = (voucher: Voucher, outletName: string) => 
     ctx.fillStyle = '#1F2937';
     ctx.font = '28px sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillText(`Partner: ${voucher.partnerName}`, 50, 400);
-    ctx.fillText(`Mobile: ${voucher.partnerMobile}`, 50, 440);
+    ctx.fillText(`Recipient: ${voucher.recipientName}`, 50, 400);
+    ctx.fillText(`Mobile: ${voucher.recipientMobile}`, 50, 440);
     
     ctx.textAlign = 'right';
     ctx.fillText(`Code: ${voucher.id}`, canvas.width - 50, 400);
@@ -49,7 +49,7 @@ export const downloadBrandedVoucher = (voucher: Voucher, outletName: string) => 
     ctx.fillStyle = '#9CA3AF';
     ctx.font = 'italic 20px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('PARTNERS PRIVILEGE VOUCHER', canvas.width / 2, 520);
+    ctx.fillText('PRIVILEGE VOUCHER', canvas.width / 2, 520);
     
     // Redeemed Watermark
     if (voucher.status === VoucherStatus.REDEEMED) {

@@ -23,6 +23,21 @@
         }
       }
     </script>
+    <style>
+      html, body, #root {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        background-color: #111827; /* Dark fallback color */
+      }
+      body {
+        background-image: url('https://images.unsplash.com/photo-1599387737255-3454b5924502?q=80&w=2070&auto=format&fit=crop');
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        background-attachment: fixed;
+      }
+    </style>
   <script type="importmap">
 {
   "imports": {
@@ -33,7 +48,7 @@
 }
 </script>
 </head>
-  <body class="bg-brand-background">
+  <body>
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
   </body>
