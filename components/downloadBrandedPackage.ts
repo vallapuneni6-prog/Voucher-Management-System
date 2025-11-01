@@ -1,6 +1,6 @@
-import { CustomerPackage, PackageTemplate, Outlet } from '../types';
+import { CustomerPackage, PackageTemplate, Outlet, ServiceRecord } from '../types';
 
-export const generateBrandedPackageInvoiceImage = async (customerPackage: CustomerPackage, template: PackageTemplate, outlet: Outlet): Promise<string> => {
+export const generateBrandedPackageInvoiceImage = async (customerPackage: CustomerPackage, template: PackageTemplate, outlet: Outlet, initialServices: ServiceRecord[]): Promise<string> => {
     const canvas = document.createElement('canvas');
     if (!canvas.getContext) {
         throw new Error('Canvas not supported or context could not be created.');
@@ -27,19 +27,15 @@ export const generateBrandedPackageInvoiceImage = async (customerPackage: Custom
     const drawSeparator = (ctx: CanvasRenderingContext2D, y: number) => {
         drawText(ctx, '-'.repeat(42), canvasWidth / 2, y, `14px ${FONT_BASE}`, 'center');
     };
-
-    const drawItemRow = (ctx: CanvasRenderingContext2D, y: number, name: string, price: string, amount: string) => {
-        drawText(ctx, name, PADDING, y, `bold 16px ${FONT_BASE}`, 'left');
-        drawText(ctx, `1 X ${price}`, PADDING, y + 20, `14px ${FONT_BASE}`, 'left');
-        drawText(ctx, amount, canvasWidth - PADDING, y + 20, `16px ${FONT_BASE}`, 'right');
-    };
     
     const drawTotalRow = (ctx: CanvasRenderingContext2D, y: number, label: string, value: string, isBold: boolean = false) => {
-         drawText(ctx, label, PADDING + 150, y, `${isBold ? 'bold ' : ''}16px ${FONT_BASE}`, 'right');
+         drawText(ctx, label, canvasWidth - PADDING - 150, y, `${isBold ? 'bold ' : ''}16px ${FONT_BASE}`, 'right');
          drawText(ctx, value, canvasWidth - PADDING, y, `${isBold ? 'bold ' : ''}16px ${FONT_BASE}`, 'right');
     }
 
-    const dynamicHeight = 700;
+    const baseHeight = 750;
+    const servicesHeight = initialServices.length > 0 ? (initialServices.length * 20) + 70 : 0;
+    const dynamicHeight = baseHeight + servicesHeight;
     canvas.width = canvasWidth;
     canvas.height = dynamicHeight;
 
@@ -83,46 +79,67 @@ export const generateBrandedPackageInvoiceImage = async (customerPackage: Custom
     drawSeparator(ctx, y);
 
     y += 25;
-    drawText(ctx, 'ITEM NAME', PADDING, y, `bold 14px ${FONT_BASE}`);
+    drawText(ctx, 'ITEM', PADDING, y, `bold 14px ${FONT_BASE}`);
     drawText(ctx, 'AMOUNT', canvasWidth - PADDING, y, `bold 14px ${FONT_BASE}`, 'right');
-    y += 15;
-    drawText(ctx, 'QTY X PRICE', PADDING, y, `bold 14px ${FONT_BASE}`);
     y += 10;
     drawSeparator(ctx, y);
     y += 25;
-    
-    const subtotal = template.serviceValue;
-    const discount = template.serviceValue - template.packageValue;
-    const total = template.packageValue;
 
-    drawItemRow(ctx, y, template.name.toUpperCase(), `₹${total.toFixed(2)}`, `₹${total.toFixed(2)}`);
-    y += 45;
+    drawText(ctx, template.name.toUpperCase(), PADDING, y, `16px ${FONT_BASE}`);
+    drawText(ctx, `₹${template.packageValue.toFixed(2)}`, canvasWidth - PADDING, y, `16px ${FONT_BASE}`, 'right');
+    y += 25;
     drawSeparator(ctx, y);
     
     y += 25;
-    drawTotalRow(ctx, y, 'SUBTOTAL:', `₹${subtotal.toFixed(2)}`);
+    drawTotalRow(ctx, y, 'AMOUNT PAID:', `₹${template.packageValue.toFixed(2)}`, true);
+    y += 20;
+    drawSeparator(ctx, y);
+
     y += 25;
-    drawTotalRow(ctx, y, 'DISCOUNT:', `- ₹${discount.toFixed(2)}`);
-    y += 15;
-    ctx.strokeStyle = '#000';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(PADDING + 140, y);
-    ctx.lineTo(canvasWidth - PADDING, y);
-    ctx.stroke();
+    drawText(ctx, 'PACKAGE BALANCE DETAILS', PADDING, y, `bold 14px ${FONT_BASE}`);
     y += 10;
-    
-    y += 15;
-    drawTotalRow(ctx, y, 'TOTAL AMOUNT:', `₹${total.toFixed(2)}`, true);
-    y += 10;
-    ctx.beginPath();
-    ctx.moveTo(PADDING + 140, y);
-    ctx.lineTo(canvasWidth - PADDING, y);
-    ctx.stroke();
-    
-    y += 40;
-    drawText(ctx, '0', canvasWidth / 2, y, `14px ${FONT_BASE}`, 'center');
+    drawSeparator(ctx, y);
     y += 25;
+
+    drawTotalRow(ctx, y, 'Total Service Value:', `₹${template.serviceValue.toFixed(2)}`);
+    y += 25;
+    
+    const totalInitialServiceValue = initialServices.reduce((sum, service) => sum + service.serviceValue, 0);
+
+    if (totalInitialServiceValue > 0) {
+        drawTotalRow(ctx, y, 'Initial Services Used:', `- ₹${totalInitialServiceValue.toFixed(2)}`);
+        y += 15;
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(canvasWidth - PADDING - 160, y);
+        ctx.lineTo(canvasWidth - PADDING, y);
+        ctx.stroke();
+        y += 10;
+    }
+
+    y += 15;
+    drawTotalRow(ctx, y, 'REMAINING BALANCE:', `₹${customerPackage.remainingServiceValue.toFixed(2)}`, true);
+    y += 20;
+    drawSeparator(ctx, y);
+
+    if (initialServices.length > 0) {
+        y += 25;
+        drawText(ctx, 'INITIAL SERVICES REDEEMED', PADDING, y, `bold 14px ${FONT_BASE}`);
+        y += 10;
+        drawSeparator(ctx, y);
+        y += 25;
+
+        initialServices.forEach(service => {
+            drawText(ctx, service.serviceName.toUpperCase(), PADDING, y, `14px ${FONT_BASE}`);
+            drawText(ctx, `₹${service.serviceValue.toFixed(2)}`, canvasWidth - PADDING, y, `14px ${FONT_BASE}`, 'right');
+            y += 20;
+        });
+        y += 10;
+        drawSeparator(ctx, y);
+    }
+
+    y += 30;
     drawText(ctx, 'THANK YOU VISIT AGAIN!', canvasWidth / 2, y, `bold 14px ${FONT_BASE}`, 'center');
     y += 20;
     drawText(ctx, '- - - * - - -', canvasWidth / 2, y, `14px ${FONT_BASE}`, 'center');

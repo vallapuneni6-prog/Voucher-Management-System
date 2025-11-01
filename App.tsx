@@ -228,7 +228,7 @@ const App: React.FC = () => {
     if (currentUser.role === 'admin') {
       switch (activeTab) {
         case 'home': return <Home vouchers={vouchers} packages={customerPackages} outlets={outlets} isAdmin={true} />;
-        case 'packages': return <Packages isAdmin={true} packageTemplates={packageTemplates} onAddTemplate={handleAddPackageTemplate} onDeleteTemplate={handleDeletePackageTemplate} customerPackages={customerPackages} outlets={outlets} />;
+        case 'packages': return <Packages isAdmin={true} packageTemplates={packageTemplates} onAddTemplate={handleAddPackageTemplate} onDeleteTemplate={handleDeletePackageTemplate} customerPackages={customerPackages} outlets={outlets} serviceRecords={serviceRecords} />;
         case 'users': return <Users users={users} outlets={outlets} onAdd={handleAddUser} onUpdate={handleUpdateUser} onDelete={handleDeleteUser} />;
         case 'outlets': return <Outlets outlets={outlets} onAdd={handleAddOutlet} onUpdate={handleUpdateOutlet} onDelete={handleDeleteOutlet} />;
         default: return <Home vouchers={vouchers} packages={customerPackages} outlets={outlets} isAdmin={true} />;

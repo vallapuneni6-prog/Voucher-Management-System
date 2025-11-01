@@ -34,145 +34,152 @@ export const Packages: React.FC<PackagesProps> = ({ isAdmin, packageTemplates, c
   const [invoiceImage, setInvoiceImage] = useState<string | null>(null);
   const [invoiceFilename, setInvoiceFilename] = useState<string>('');
 
-  const handleDownloadBill = async (transaction: ServiceRecord[], packageInfo: CustomerPackage) => {
+  // Fix: Moved `generateAndDownloadRedemptionBill` to the parent component scope to make it accessible by `HistoryModal`.
+  const generateAndDownloadRedemptionBill = async (transaction: ServiceRecord[], packageInfo: CustomerPackage) => {
+    // This function generates a PNG image of a bill for redeemed services.
     try {
-      const packageOutlet = outlets.find(o => o.id === packageInfo.outletId);
-      if (!packageOutlet) {
-        throw new Error("Could not find outlet information for this package.");
-      }
+        const packageOutlet = outlets.find(o => o.id === packageInfo.outletId);
+        if (!packageOutlet) {
+            throw new Error("Could not find outlet information for this package.");
+        }
 
-      const canvas = document.createElement('canvas');
-      const FONT_BASE = '"Courier New", Courier, monospace';
-      const PADDING = 25;
-      const canvasWidth = 450;
-      
-      const drawText = (ctx: CanvasRenderingContext2D, text: string, x: number, y: number, font: string, align: CanvasTextAlign = 'left', color = '#000000') => {
-        ctx.font = font;
-        ctx.textAlign = align;
-        ctx.fillStyle = color;
-        ctx.fillText(text, x, y);
-      };
+        const canvas = document.createElement('canvas');
+        const FONT_BASE = '"Courier New", Courier, monospace';
+        const PADDING = 25;
+        const CANVAS_WIDTH = 450;
+        
+        // Helper functions for drawing
+        const drawText = (ctx: CanvasRenderingContext2D, text: string, x: number, y: number, font: string, align: CanvasTextAlign = 'left', color = '#000000') => {
+            ctx.font = font;
+            ctx.textAlign = align;
+            ctx.fillStyle = color;
+            ctx.fillText(text, x, y);
+        };
 
-      const drawMultiLineText = (ctx: CanvasRenderingContext2D, text: string, x: number, y: number, font: string, lineHeight: number, align: CanvasTextAlign = 'center') => {
-        const lines = (text || '').split('\n');
-        lines.forEach((line, index) => {
-          drawText(ctx, line, x, y + (index * lineHeight), font, align);
+        const drawMultiLineText = (ctx: CanvasRenderingContext2D, text: string, x: number, y: number, font: string, lineHeight: number, align: CanvasTextAlign = 'center') => {
+            const lines = (text || '').split('\n');
+            lines.forEach((line, index) => {
+                drawText(ctx, line, x, y + (index * lineHeight), font, align);
+            });
+            return y + ((lines.length -1) * lineHeight);
+        };
+
+        const drawSeparator = (ctx: CanvasRenderingContext2D, y: number) => {
+            drawText(ctx, '-'.repeat(42), CANVAS_WIDTH / 2, y, `14px ${FONT_BASE}`, 'center');
+        };
+        
+        // Calculate dynamic height based on number of services
+        const services = transaction; // for clarity
+        const dynamicHeight = 650 + (services.length * 25);
+        canvas.width = CANVAS_WIDTH;
+        canvas.height = dynamicHeight;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) { throw new Error('Failed to create canvas context for bill generation.'); }
+        
+        let y = 0;
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // --- 1. Header Section ---
+        y = 50;
+        drawText(ctx, 'Naturals', CANVAS_WIDTH / 2, y, `bold 40px sans-serif`, 'center');
+        y += 30;
+        drawText(ctx, "India's No.1 hair and beauty salon", CANVAS_WIDTH / 2, y, `16px sans-serif`, 'center');
+        y += 35;
+        drawText(ctx, packageOutlet.name, CANVAS_WIDTH / 2, y, `bold 18px ${FONT_BASE}`, 'center');
+        y += 20;
+        y = drawMultiLineText(ctx, packageOutlet.address, CANVAS_WIDTH / 2, y, `14px ${FONT_BASE}`, 18, 'center');
+        y += 25;
+        drawText(ctx, `GSTIN: ${packageOutlet.gstin}`, CANVAS_WIDTH / 2, y, `14px ${FONT_BASE}`, 'center');
+        y += 20;
+        drawText(ctx, `PHONE: ${packageOutlet.phone}`, CANVAS_WIDTH / 2, y, `14px ${FONT_BASE}`, 'center');
+        y += 20;
+        drawSeparator(ctx, y);
+
+        // --- 2. Customer & Bill Info Section ---
+        y += 25;
+        drawText(ctx, `NAME: ${packageInfo.customerName}`, PADDING, y, `14px ${FONT_BASE}`);
+        y += 20;
+        drawText(ctx, `PHONE: ${packageInfo.customerMobile}`, PADDING, y, `14px ${FONT_BASE}`);
+        y += 25;
+        const billDate = new Date(services[0].redeemedDate);
+        drawText(ctx, `BILL NO: ${services[0].transactionId.slice(-6).toUpperCase()}`, PADDING, y, `14px ${FONT_BASE}`);
+        drawText(ctx, `DATE: ${billDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase()}`, CANVAS_WIDTH - PADDING, y, `14px ${FONT_BASE}`, 'right');
+        y += 20;
+        drawText(ctx, `TIME: ${billDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}`, CANVAS_WIDTH - PADDING, y, `14px ${FONT_BASE}`, 'right');
+        y += 20;
+        drawSeparator(ctx, y);
+
+        // --- 3. Services List Section (Itemized Services) ---
+        y += 25;
+        drawText(ctx, 'SERVICE', PADDING, y, `bold 14px ${FONT_BASE}`);
+        drawText(ctx, 'VALUE', CANVAS_WIDTH - PADDING, y, `bold 14px ${FONT_BASE}`, 'right');
+        y += 10;
+        drawSeparator(ctx, y);
+        y += 25;
+        
+        services.forEach(service => {
+            drawText(ctx, service.serviceName.toUpperCase(), PADDING, y, `16px ${FONT_BASE}`);
+            drawText(ctx, `₹${service.serviceValue.toFixed(2)}`, CANVAS_WIDTH - PADDING, y, `16px ${FONT_BASE}`, 'right');
+            y += 25;
         });
-        return y + ((lines.length -1) * lineHeight);
-      };
+        y += 10;
+        drawSeparator(ctx, y);
 
-      const drawSeparator = (ctx: CanvasRenderingContext2D, y: number) => {
-        drawText(ctx, '-'.repeat(42), canvasWidth / 2, y, `14px ${FONT_BASE}`, 'center');
-      };
-      
-      const services = transaction;
-      const dynamicHeight = 650 + (services.length * 25);
-      canvas.width = canvasWidth;
-      canvas.height = dynamicHeight;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) { throw new Error('Failed to create canvas context for bill generation.'); }
-      
-      let y = 0;
-      ctx.fillStyle = '#FFFFFF';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      
-      // 1. Header Section
-      y = 50;
-      drawText(ctx, 'Naturals', canvasWidth / 2, y, `bold 40px sans-serif`, 'center');
-      y += 30;
-      drawText(ctx, "India's No.1 hair and beauty salon", canvasWidth / 2, y, `16px sans-serif`, 'center');
-      y += 35;
-      drawText(ctx, packageOutlet.name, canvasWidth / 2, y, `bold 18px ${FONT_BASE}`, 'center');
-      y += 20;
-      y = drawMultiLineText(ctx, packageOutlet.address, canvasWidth / 2, y, `14px ${FONT_BASE}`, 18, 'center');
-      y += 25;
-      drawText(ctx, `GSTIN: ${packageOutlet.gstin}`, canvasWidth / 2, y, `14px ${FONT_BASE}`, 'center');
-      y += 20;
-      drawText(ctx, `PHONE: ${packageOutlet.phone}`, canvasWidth / 2, y, `14px ${FONT_BASE}`, 'center');
-      y += 20;
-      drawSeparator(ctx, y);
+        // --- 4. Totals Section ---
+        const totalRedeemedValue = services.reduce((sum, s) => sum + s.serviceValue, 0);
+        y += 25;
+        drawText(ctx, 'Total Redeemed Value:', CANVAS_WIDTH - PADDING - 100, y, `bold 16px ${FONT_BASE}`, 'right');
+        drawText(ctx, `₹${totalRedeemedValue.toFixed(2)}`, CANVAS_WIDTH - PADDING, y, `bold 16px ${FONT_BASE}`, 'right');
+        y += 25;
+        drawText(ctx, 'Amount Paid:', CANVAS_WIDTH - PADDING - 100, y, `16px ${FONT_BASE}`, 'right');
+        drawText(ctx, `₹0.00`, CANVAS_WIDTH - PADDING, y, `16px ${FONT_BASE}`, 'right');
+        y += 20;
+  
+        // --- 5. Package Balance Section ---
+        drawSeparator(ctx, y);
+        y += 25;
+        drawText(ctx, 'PACKAGE BALANCE', PADDING, y, `bold 16px ${FONT_BASE}`);
+        y += 25;
 
-      // 2. Customer & Bill Info Section
-      y += 25;
-      drawText(ctx, `NAME: ${packageInfo.customerName}`, PADDING, y, `14px ${FONT_BASE}`);
-      y += 20;
-      drawText(ctx, `PHONE: ${packageInfo.customerMobile}`, PADDING, y, `14px ${FONT_BASE}`);
-      y += 25;
-      const billDate = new Date(services[0].redeemedDate);
-      drawText(ctx, `BILL NO: ${services[0].transactionId.slice(-6).toUpperCase()}`, PADDING, y, `14px ${FONT_BASE}`);
-      drawText(ctx, `DATE: ${billDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase()}`, canvasWidth - PADDING, y, `14px ${FONT_BASE}`, 'right');
-      y += 20;
-      drawText(ctx, `TIME: ${billDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}`, canvasWidth - PADDING, y, `14px ${FONT_BASE}`, 'right');
-      y += 20;
-      drawSeparator(ctx, y);
+        // This calculation is key: Balance *after* redemption + value of redemption = balance *before*
+        const balanceBefore = packageInfo.remainingServiceValue + totalRedeemedValue;
+        drawText(ctx, 'Balance Before:', CANVAS_WIDTH - PADDING - 100, y, `16px ${FONT_BASE}`, 'right');
+        drawText(ctx, `₹${balanceBefore.toFixed(2)}`, CANVAS_WIDTH - PADDING, y, `16px ${FONT_BASE}`, 'right');
+        y += 25;
+        drawText(ctx, 'This Redemption:', CANVAS_WIDTH - PADDING - 100, y, `16px ${FONT_BASE}`, 'right');
+        drawText(ctx, `- ₹${totalRedeemedValue.toFixed(2)}`, CANVAS_WIDTH - PADDING, y, `16px ${FONT_BASE}`, 'right');
+        y += 15;
+        
+        // Draw a line separator for the total
+        ctx.beginPath();
+        ctx.moveTo(CANVAS_WIDTH - PADDING - 150, y);
+        ctx.lineTo(CANVAS_WIDTH - PADDING, y);
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        y += 10;
 
-      // 3. Services List Section
-      y += 25;
-      drawText(ctx, 'SERVICE', PADDING, y, `bold 14px ${FONT_BASE}`);
-      drawText(ctx, 'VALUE', canvasWidth - PADDING, y, `bold 14px ${FONT_BASE}`, 'right');
-      y += 10;
-      drawSeparator(ctx, y);
-      y += 25;
-      
-      services.forEach(service => {
-          drawText(ctx, service.serviceName.toUpperCase(), PADDING, y, `16px ${FONT_BASE}`);
-          drawText(ctx, `₹${service.serviceValue.toFixed(2)}`, canvasWidth - PADDING, y, `16px ${FONT_BASE}`, 'right');
-          y += 25;
-      });
-      y += 10;
-      drawSeparator(ctx, y);
+        drawText(ctx, 'Remaining Balance:', CANVAS_WIDTH - PADDING - 100, y, `bold 16px ${FONT_BASE}`, 'right');
+        drawText(ctx, `₹${packageInfo.remainingServiceValue.toFixed(2)}`, CANVAS_WIDTH - PADDING, y, `bold 16px ${FONT_BASE}`, 'right');
+        y += 25;
+        drawSeparator(ctx, y);
 
-      // 4. Totals Section
-      const totalRedeemedValue = services.reduce((sum, s) => sum + s.serviceValue, 0);
-      y += 25;
-      drawText(ctx, 'Total Redeemed Value:', canvasWidth - PADDING - 100, y, `bold 16px ${FONT_BASE}`, 'right');
-      drawText(ctx, `₹${totalRedeemedValue.toFixed(2)}`, canvasWidth - PADDING, y, `bold 16px ${FONT_BASE}`, 'right');
-      y += 25;
-      drawText(ctx, 'Amount Paid:', canvasWidth - PADDING - 100, y, `16px ${FONT_BASE}`, 'right');
-      drawText(ctx, `₹0.00`, canvasWidth - PADDING, y, `16px ${FONT_BASE}`, 'right');
-      y += 20;
-      
-      // 5. Package Balance Section
-      drawSeparator(ctx, y);
-      y += 25;
-      drawText(ctx, 'PACKAGE BALANCE', PADDING, y, `bold 16px ${FONT_BASE}`);
-      y += 25;
+        // --- 6. Footer Section ---
+        y += 30;
+        drawText(ctx, 'THANK YOU VISIT AGAIN!', CANVAS_WIDTH / 2, y, `bold 14px ${FONT_BASE}`, 'center');
 
-      const balanceBefore = packageInfo.remainingServiceValue + totalRedeemedValue;
-      drawText(ctx, 'Balance Before:', canvasWidth - PADDING - 100, y, `16px ${FONT_BASE}`, 'right');
-      drawText(ctx, `₹${balanceBefore.toFixed(2)}`, canvasWidth - PADDING, y, `16px ${FONT_BASE}`, 'right');
-      y += 25;
-      drawText(ctx, 'This Redemption:', canvasWidth - PADDING - 100, y, `16px ${FONT_BASE}`, 'right');
-      drawText(ctx, `- ₹${totalRedeemedValue.toFixed(2)}`, canvasWidth - PADDING, y, `16px ${FONT_BASE}`, 'right');
-      y += 15;
-      
-      ctx.beginPath();
-      ctx.moveTo(canvasWidth - PADDING - 150, y);
-      ctx.lineTo(canvasWidth - PADDING, y);
-      ctx.strokeStyle = '#000';
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-      y += 10;
+        // --- Trigger Download ---
+        const link = document.createElement('a');
+        link.download = `redemption-bill-${packageInfo.customerName.replace(/\s+/g, '-')}-${services[0].transactionId.slice(-6)}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
 
-      drawText(ctx, 'Remaining Balance:', canvasWidth - PADDING - 100, y, `bold 16px ${FONT_BASE}`, 'right');
-      drawText(ctx, `₹${packageInfo.remainingServiceValue.toFixed(2)}`, canvasWidth - PADDING, y, `bold 16px ${FONT_BASE}`, 'right');
-      y += 25;
-      drawSeparator(ctx, y);
-
-      // 6. Footer Section
-      y += 30;
-      drawText(ctx, 'THANK YOU VISIT AGAIN!', canvasWidth / 2, y, `bold 14px ${FONT_BASE}`, 'center');
-
-      const link = document.createElement('a');
-      link.download = `redemption-bill-${packageInfo.customerName.replace(/\s+/g, '-')}-${services[0].transactionId.slice(-6)}.png`;
-      link.href = canvas.toDataURL('image/png');
-      link.click();
     } catch (error) {
-      console.error("Failed to download bill:", error);
-      alert(`Failed to download bill: ${error instanceof Error ? error.message : String(error)}`);
+        console.error("Failed to generate and download redemption bill:", error);
+        alert(`Failed to generate bill: ${error instanceof Error ? error.message : String(error)}`);
     }
   };
-
 
   const AdminView = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -269,9 +276,10 @@ export const Packages: React.FC<PackagesProps> = ({ isAdmin, packageTemplates, c
                                             <button 
                                                 onClick={async () => {
                                                     try {
+                                                        const initialServices = serviceRecords?.filter(r => r.customerPackageId === cp.id && new Date(r.redeemedDate).getTime() === new Date(cp.assignedDate).getTime()) || [];
                                                         const packageOutlet = outlets.find(o => o.id === cp.outletId);
                                                         if (template && packageOutlet) {
-                                                            const imageDataUrl = await generateBrandedPackageInvoiceImage(cp, template, packageOutlet);
+                                                            const imageDataUrl = await generateBrandedPackageInvoiceImage(cp, template, packageOutlet, initialServices);
                                                             setInvoiceImage(imageDataUrl);
                                                             setInvoiceFilename(`invoice-${cp.customerName.replace(/\s+/g, '-')}-${cp.id.slice(-6)}.png`);
                                                         } else {
@@ -458,9 +466,10 @@ export const Packages: React.FC<PackagesProps> = ({ isAdmin, packageTemplates, c
                                             <button 
                                                 onClick={async () => {
                                                     try {
+                                                        const initialServices = serviceRecords?.filter(r => r.customerPackageId === cp.id && new Date(r.redeemedDate).getTime() === new Date(cp.assignedDate).getTime()) || [];
                                                         const packageOutlet = outlets.find(o => o.id === cp.outletId);
                                                         if (template && packageOutlet) {
-                                                            const imageDataUrl = await generateBrandedPackageInvoiceImage(cp, template, packageOutlet);
+                                                            const imageDataUrl = await generateBrandedPackageInvoiceImage(cp, template, packageOutlet, initialServices);
                                                             setInvoiceImage(imageDataUrl);
                                                             setInvoiceFilename(`invoice-${cp.customerName.replace(/\s+/g, '-')}-${cp.id.slice(-6)}.png`);
                                                         } else {
@@ -631,7 +640,7 @@ export const Packages: React.FC<PackagesProps> = ({ isAdmin, packageTemplates, c
                                     <p className="font-semibold">{new Date(transaction[0].redeemedDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
                                     <p className="text-xs text-brand-text-secondary">Bill No: {transaction[0].transactionId.slice(-6).toUpperCase()}</p>
                                   </div>
-                                  <button onClick={() => handleDownloadBill(transaction, historyModalPackage)} className="bg-brand-primary text-white font-semibold py-1 px-3 text-sm rounded-md hover:opacity-90">Download Bill</button>
+                                  <button onClick={() => generateAndDownloadRedemptionBill(transaction, historyModalPackage)} className="bg-brand-primary text-white font-semibold py-1 px-3 text-sm rounded-md hover:opacity-90">Download Bill</button>
                                 </div>
                                 <ul className="list-disc list-inside text-sm space-y-1">
                                     {transaction.map(record => (
