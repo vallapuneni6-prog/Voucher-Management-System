@@ -1,73 +1,92 @@
-import { Voucher, VoucherStatus } from '../types';
+import { Voucher } from '../types';
 
-export const downloadBrandedVoucher = (voucher: Voucher, outletName: string) => {
-    const canvas = document.createElement('canvas');
-    canvas.width = 1000;
-    canvas.height = 562;
-    const ctx = canvas.getContext('2d');
+// The flower image from the design is omitted as it's a complex illustration not easily reproducible with code.
+// The core layout, colors, and text from the design are replicated.
 
-    if (!ctx) {
-      alert('Failed to create canvas context for download.');
-      return;
-    }
+export const generateBrandedVoucherImage = async (voucher: Voucher): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 1200;
+        canvas.height = 600;
+        const ctx = canvas.getContext('2d');
 
-    // Background
-    const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    gradient.addColorStop(0, '#FFFFFF');
-    gradient.addColorStop(1, '#F8F8F8');
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+        if (!ctx) {
+            return reject(new Error('Failed to create canvas context for voucher generation.'));
+        }
 
-    // Header
-    ctx.fillStyle = '#4F46E5';
-    ctx.font = 'bold 60px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('Naturals', canvas.width / 2, 100);
-    ctx.font = '30px sans-serif';
-    ctx.fillText("India's No.1 hair and beauty salon", canvas.width / 2, 140);
-    ctx.fillStyle = '#1F2937';
-    ctx.font = 'italic 24px sans-serif';
-    ctx.fillText(`Issued from: ${outletName}`, canvas.width / 2, 180);
+        // Backgrounds
+        // Left side (light pink)
+        ctx.fillStyle = '#FEF6F6'; // A light pinkish color
+        ctx.fillRect(0, 0, 700, 600);
 
-    // Discount
-    ctx.fillStyle = '#10B981';
-    ctx.font = 'bold 120px sans-serif';
-    ctx.fillText(`${voucher.discountPercentage}% OFF`, canvas.width / 2, 300);
+        // Right side (golden gradient)
+        const gradient = ctx.createLinearGradient(700, 0, 1200, 0);
+        gradient.addColorStop(0, '#EACD81');
+        gradient.addColorStop(1, '#D4B368');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(700, 0, 500, 600);
 
-    // Details
-    ctx.fillStyle = '#1F2937';
-    ctx.font = '28px sans-serif';
-    ctx.textAlign = 'left';
-    ctx.fillText(`Recipient: ${voucher.recipientName}`, 50, 400);
-    ctx.fillText(`Mobile: ${voucher.recipientMobile}`, 50, 440);
-    
-    ctx.textAlign = 'right';
-    ctx.fillText(`Code: ${voucher.id}`, canvas.width - 50, 400);
-    ctx.fillText(`Expires: ${new Date(voucher.expiryDate).toLocaleDateString()}`, canvas.width - 50, 440);
-    
-    // Footer
-    ctx.fillStyle = '#9CA3AF';
-    ctx.font = 'italic 20px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('PRIVILEGE VOUCHER', canvas.width / 2, 520);
-    
-    // Redeemed Watermark
-    if (voucher.status === VoucherStatus.REDEEMED) {
-        ctx.save();
-        ctx.translate(canvas.width / 2, canvas.height / 2);
-        ctx.rotate(-0.25);
-        ctx.font = 'bold 100px sans-serif';
-        ctx.fillStyle = 'rgba(255, 0, 0, 0.5)';
-        ctx.textAlign = 'center';
-        ctx.strokeStyle = 'rgba(180, 0, 0, 0.7)';
-        ctx.lineWidth = 5;
-        ctx.strokeText('REDEEMED', 0, 0);
-        ctx.fillText('REDEEMED', 0, 0);
-        ctx.restore();
-    }
-    
-    const link = document.createElement('a');
-    link.download = `voucher-${voucher.id}.png`;
-    link.href = canvas.toDataURL('image/png');
-    link.click();
+        // Header
+        // Logo
+        ctx.fillStyle = '#4A2A7B'; // Naturals Purple
+        ctx.font = 'bold 50px sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText('naturals', 60, 80);
+        ctx.font = '20px sans-serif';
+        ctx.fillText("India's No.1 hair and beauty salon", 60, 110);
+        
+        // Voucher Title
+        ctx.fillStyle = '#000000';
+        ctx.font = 'bold 32px sans-serif';
+        ctx.textAlign = 'right';
+        ctx.fillText('PARTNER PRIVILEGE VOUCHER', 1140, 80);
+        
+        // Reset alignment
+        ctx.textAlign = 'left';
+
+        // Left Content Area
+        ctx.fillStyle = '#000000';
+        ctx.font = '24px sans-serif';
+        ctx.fillText('SPECIAL DISCOUNT', 60, 220);
+
+        ctx.fillStyle = '#E59333'; // Golden Orange
+        ctx.font = 'bold 180px sans-serif';
+        ctx.fillText(`${voucher.discountPercentage}%`, 60, 380);
+        
+        ctx.fillStyle = '#000000';
+        ctx.font = '60px sans-serif';
+        ctx.fillText('OFF', 150, 460);
+        
+        // Right Content Area
+        // Quote
+        ctx.fillStyle = '#D9534F'; // Reddish Pink
+        ctx.font = 'italic 20px sans-serif';
+        const quoteLine1 = 'This exclusive treat awaits you —';
+        const quoteLine2 = 'courtesy of someone who cares.';
+        ctx.fillText(quoteLine1, 720, 220);
+        ctx.fillText(quoteLine2, 720, 250);
+        
+        // Details
+        const detailYStart = 350;
+        const detailYStep = 50;
+        
+        ctx.fillStyle = '#000000';
+        ctx.font = 'bold 22px sans-serif';
+        ctx.fillText('PARTNER NAME:', 720, detailYStart);
+        ctx.fillText('VOUCHER ID:', 720, detailYStart + detailYStep);
+        ctx.fillText('VALIDITY:', 720, detailYStart + (detailYStep * 2));
+
+        ctx.font = '22px sans-serif';
+        ctx.fillText(voucher.recipientName, 920, detailYStart);
+        ctx.fillText(voucher.id, 920, detailYStart + detailYStep);
+        ctx.fillText(new Date(voucher.expiryDate).toLocaleDateString(), 920, detailYStart + (detailYStep * 2));
+        
+        // Footer
+        ctx.fillStyle = '#333333';
+        ctx.font = '16px sans-serif';
+        const footerText = '• Voucher not applicable on Hair Treatments & Bridal makeup. Voucher Valid only at Store issued, please take prior appointment for service';
+        ctx.fillText(footerText, 60, 570);
+        
+        resolve(canvas.toDataURL('image/png'));
+    });
 };

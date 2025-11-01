@@ -14,7 +14,7 @@ export const Outlets: React.FC<OutletsProps> = ({ outlets, onAdd, onUpdate, onDe
   const [isEditing, setIsEditing] = useState(false);
 
   const openModalForNew = () => {
-    setCurrentOutlet({ name: '', location: '' });
+    setCurrentOutlet({ name: '', location: '', code: '', address: '', gstin: '', phone: '' });
     setIsEditing(false);
     setIsModalOpen(true);
   };
@@ -44,7 +44,7 @@ export const Outlets: React.FC<OutletsProps> = ({ outlets, onAdd, onUpdate, onDe
     };
   }, [isModalOpen, closeModal]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     if (!currentOutlet) return;
     const { name, value } = e.target;
     setCurrentOutlet({ ...currentOutlet, [name]: value });
@@ -65,21 +65,21 @@ export const Outlets: React.FC<OutletsProps> = ({ outlets, onAdd, onUpdate, onDe
     <div>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-brand-text-primary">Manage Outlets</h1>
-        <button onClick={openModalForNew} className="bg-brand-primary text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-indigo-500 transition-colors">
+        <button onClick={openModalForNew} className="bg-brand-primary text-white font-semibold py-2 px-4 rounded-lg shadow-sm hover:opacity-90 transition-colors">
           New Outlet
         </button>
       </div>
       <div className="space-y-3">
         {outlets.length > 0 ? (
           outlets.map(outlet => (
-            <div key={outlet.id} className="bg-brand-surface p-4 rounded-lg flex justify-between items-center">
+            <div key={outlet.id} className="bg-brand-surface border border-brand-border p-4 rounded-lg flex justify-between items-center">
               <div>
                 <p className="font-bold">{outlet.name}</p>
                 <p className="text-sm text-brand-text-secondary">{outlet.location}</p>
               </div>
               <div className="space-x-2">
-                <button onClick={() => openModalForEdit(outlet)} className="text-yellow-400 hover:text-yellow-300">Edit</button>
-                <button onClick={() => onDelete(outlet.id)} className="text-red-500 hover:text-red-400">Delete</button>
+                <button onClick={() => openModalForEdit(outlet)} className="text-yellow-500 hover:text-yellow-600">Edit</button>
+                <button onClick={() => onDelete(outlet.id)} className="text-red-500 hover:text-red-600">Delete</button>
               </div>
             </div>
           ))
@@ -90,19 +90,23 @@ export const Outlets: React.FC<OutletsProps> = ({ outlets, onAdd, onUpdate, onDe
 
       {isModalOpen && currentOutlet && (
         <div 
-          className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4"
           role="dialog"
           aria-modal="true"
           aria-labelledby="outlet-dialog-title"
         >
-          <div className="bg-brand-surface rounded-xl p-6 w-full max-w-sm">
+          <div className="bg-brand-surface rounded-xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto border border-brand-border">
             <h2 id="outlet-dialog-title" className="text-2xl font-bold mb-4 text-brand-text-primary">{isEditing ? 'Edit Outlet' : 'Create Outlet'}</h2>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <input type="text" name="name" placeholder="Outlet Name" value={currentOutlet.name} onChange={handleChange} required className="w-full bg-gray-700 text-white p-3 rounded-lg border border-gray-600 focus:outline-none focus:ring-2 focus:ring-brand-primary" />
-              <input type="text" name="location" placeholder="Location" value={currentOutlet.location} onChange={handleChange} required className="w-full bg-gray-700 text-white p-3 rounded-lg border border-gray-600 focus:outline-none focus:ring-2 focus:ring-brand-primary" />
+              <input type="text" name="name" placeholder="Outlet Name" value={currentOutlet.name} onChange={handleChange} required className="w-full bg-brand-surface text-brand-text-primary p-3 rounded-lg border border-brand-border focus:outline-none focus:ring-2 focus:ring-brand-primary" />
+              <input type="text" name="location" placeholder="Location" value={currentOutlet.location} onChange={handleChange} required className="w-full bg-brand-surface text-brand-text-primary p-3 rounded-lg border border-brand-border focus:outline-none focus:ring-2 focus:ring-brand-primary" />
+              <input type="text" name="code" placeholder="Outlet Code (e.g., NAT)" value={(currentOutlet as Outlet).code || ''} onChange={handleChange} required className="w-full bg-brand-surface text-brand-text-primary p-3 rounded-lg border border-brand-border focus:outline-none focus:ring-2 focus:ring-brand-primary" />
+              <textarea name="address" placeholder="Address" value={(currentOutlet as Outlet).address || ''} onChange={handleChange} required className="w-full bg-brand-surface text-brand-text-primary p-3 rounded-lg border border-brand-border focus:outline-none focus:ring-2 focus:ring-brand-primary" rows={3}></textarea>
+              <input type="text" name="gstin" placeholder="GSTIN" value={(currentOutlet as Outlet).gstin || ''} onChange={handleChange} required className="w-full bg-brand-surface text-brand-text-primary p-3 rounded-lg border border-brand-border focus:outline-none focus:ring-2 focus:ring-brand-primary" />
+              <input type="tel" name="phone" placeholder="Phone" value={(currentOutlet as Outlet).phone || ''} onChange={handleChange} required className="w-full bg-brand-surface text-brand-text-primary p-3 rounded-lg border border-brand-border focus:outline-none focus:ring-2 focus:ring-brand-primary" />
               <div className="flex justify-end space-x-3 pt-2">
-                <button type="button" onClick={closeModal} className="bg-gray-600 text-white py-2 px-4 rounded-lg hover:bg-gray-500">Cancel</button>
-                <button type="submit" className="bg-brand-primary text-white py-2 px-4 rounded-lg hover:bg-indigo-500">Save</button>
+                <button type="button" onClick={closeModal} className="bg-gray-100 text-brand-text-primary py-2 px-4 rounded-lg hover:bg-gray-200">Cancel</button>
+                <button type="submit" className="bg-brand-primary text-white py-2 px-4 rounded-lg hover:opacity-90">Save</button>
               </div>
             </form>
           </div>

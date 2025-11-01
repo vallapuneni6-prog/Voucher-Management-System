@@ -13,9 +13,9 @@ export const Home: React.FC<HomeProps> = ({ vouchers, packages, outlets, isAdmin
   const [selectedOutletId, setSelectedOutletId] = useState('all');
 
   const statusStyles: { [key in VoucherStatus]: string } = {
-    [VoucherStatus.ISSUED]: 'bg-blue-500 text-blue-100',
-    [VoucherStatus.REDEEMED]: 'bg-green-500 text-green-100',
-    [VoucherStatus.EXPIRED]: 'bg-red-500 text-red-100',
+    [VoucherStatus.ISSUED]: 'bg-blue-100 text-blue-800',
+    [VoucherStatus.REDEEMED]: 'bg-green-100 text-green-800',
+    [VoucherStatus.EXPIRED]: 'bg-red-100 text-red-800',
   };
 
   const getOutletName = (outletId: string) => {
@@ -109,7 +109,7 @@ export const Home: React.FC<HomeProps> = ({ vouchers, packages, outlets, isAdmin
             <select 
               value={selectedOutletId} 
               onChange={(e) => setSelectedOutletId(e.target.value)}
-              className="w-full bg-brand-surface text-white p-2 rounded-lg border border-gray-600 focus:outline-none focus:ring-2 focus:ring-brand-primary"
+              className="w-full bg-brand-surface text-brand-text-primary p-2 rounded-lg border border-brand-border focus:outline-none focus:ring-2 focus:ring-brand-primary"
             >
               <option value="all">All Outlets</option>
               {outlets.map(outlet => (
@@ -118,7 +118,7 @@ export const Home: React.FC<HomeProps> = ({ vouchers, packages, outlets, isAdmin
             </select>
             <button
                 onClick={handleGenerateReport}
-                className="w-full bg-brand-secondary text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-green-500 transition-colors"
+                className="w-full bg-gradient-to-r from-brand-gradient-from to-brand-gradient-to text-white font-semibold py-2 px-4 rounded-lg shadow-sm hover:opacity-90 transition-colors"
             >
                 Generate Report
             </button>
@@ -131,26 +131,26 @@ export const Home: React.FC<HomeProps> = ({ vouchers, packages, outlets, isAdmin
           <h2 className="text-xl font-semibold mb-4 text-brand-text-primary">Voucher Statistics</h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <StatCard title="New" value={newVouchers} color="text-brand-primary" />
-            <StatCard title="Redeemed" value={redeemedVouchers} color="text-brand-secondary" />
+            <StatCard title="Redeemed" value={redeemedVouchers} color="text-green-500" />
             <StatCard title="Expired" value={expiredVouchers} color="text-red-500" />
           </div>
         </div>
         <div>
           <h2 className="text-xl font-semibold mb-4 text-brand-text-primary">Package Statistics</h2>
           <div className="grid grid-cols-1">
-            <StatCard title="Packages Assigned" value={packagesAssignedThisMonth} color="text-yellow-400" />
+            <StatCard title="Packages Assigned" value={packagesAssignedThisMonth} color="text-yellow-500" />
           </div>
         </div>
       </div>
      
 
-      <div className="bg-brand-surface rounded-xl shadow-lg">
+      <div className="bg-brand-surface rounded-xl shadow-sm border border-brand-border">
         <h2 className="text-xl font-semibold text-brand-text-primary p-4 sm:p-6">Recent Vouchers Overview</h2>
         
         {vouchersToDisplay.length > 0 ? (
           <div className="px-4 pb-4 space-y-3">
             {[...vouchersToDisplay].reverse().slice(0, 15).map(voucher => (
-              <div key={voucher.id} className="bg-gray-800 p-4 rounded-lg flex flex-col sm:flex-row sm:justify-between sm:items-center">
+              <div key={voucher.id} className="bg-brand-background p-4 rounded-lg flex flex-col sm:flex-row sm:justify-between sm:items-center">
                 <div className="mb-3 sm:mb-0">
                   <p className="font-mono text-sm text-brand-text-primary break-all">{voucher.id}</p>
                   <p className="font-semibold text-brand-text-primary">{voucher.recipientName}</p>
@@ -161,7 +161,7 @@ export const Home: React.FC<HomeProps> = ({ vouchers, packages, outlets, isAdmin
                     {voucher.status}
                   </span>
                   <p className="text-sm text-brand-text-secondary">Expires: {voucher.expiryDate.toLocaleDateString()}</p>
-                  <p className="text-sm font-bold text-brand-secondary">Discount: {voucher.discountPercentage}%</p>
+                  <p className="text-sm font-bold text-green-600">Discount: {voucher.discountPercentage}%</p>
                 </div>
               </div>
             ))}

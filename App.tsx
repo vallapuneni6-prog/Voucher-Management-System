@@ -25,6 +25,7 @@ const App: React.FC = () => {
   });
   const [activeTab, setActiveTab] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [outlets, setOutlets] = useState<Outlet[]>([]);
@@ -51,6 +52,7 @@ const App: React.FC = () => {
   useEffect(() => {
     if (currentUser) {
       setIsLoading(true);
+      setError(null);
       Promise.all([
         getVouchers(),
         getUsers(),
@@ -65,6 +67,10 @@ const App: React.FC = () => {
         setPackageTemplates(templatesData);
         setCustomerPackages(hydrateCustomerPackageDates(customerPackagesData));
         setServiceRecords(serviceRecordsData.map(r => ({...r, redeemedDate: new Date(r.redeemedDate)})));
+      }).catch(err => {
+        console.error("Failed to load initial data:", err);
+        setError("Failed to load application data. Please try refreshing the page.");
+      }).finally(() => {
         setIsLoading(false);
       });
       setActiveTab(currentUser.role === 'admin' ? 'home' : 'issue');
@@ -141,22 +147,30 @@ const App: React.FC = () => {
   };
   
   // User/Outlet CRUD Handlers
-  const handleAddUser = async (user: Omit<User, 'id'>) => { await addUser(user); setUsers(await getUsers()); };
-  const handleUpdateUser = async (user: User) => { await updateUser(user); setUsers(await getUsers()); };
-  const handleDeleteUser = async (id: string) => { await deleteUser(id); setUsers(prev => prev.filter(u => u.id !== id)); };
+  const handleAddUser = async (user: Omit<User, 'id'>) => { try { await addUser(user); setUsers(await getUsers()); } catch (e) { alert(`Error: ${e instanceof Error ? e.message : String(e)}`); }};
+  const handleUpdateUser = async (user: User) => { try { await updateUser(user); setUsers(await getUsers()); } catch (e) { alert(`Error: ${e instanceof Error ? e.message : String(e)}`); }};
+  const handleDeleteUser = async (id: string) => { try { await deleteUser(id); setUsers(prev => prev.filter(u => u.id !== id)); } catch (e) { alert(`Error: ${e instanceof Error ? e.message : String(e)}`); }};
 
-  const handleAddOutlet = async (outlet: Omit<Outlet, 'id'>) => { await addOutlet(outlet); setOutlets(await getOutlets()); };
-  const handleUpdateOutlet = async (outlet: Outlet) => { await updateOutlet(outlet); setOutlets(await getOutlets()); };
-  const handleDeleteOutlet = async (id: string) => { await deleteOutlet(id); setOutlets(prev => prev.filter(o => o.id !== id)); };
+  const handleAddOutlet = async (outlet: Omit<Outlet, 'id'>) => { try { await addOutlet(outlet); setOutlets(await getOutlets()); } catch (e) { alert(`Error: ${e instanceof Error ? e.message : String(e)}`); }};
+  const handleUpdateOutlet = async (outlet: Outlet) => { try { await updateOutlet(outlet); setOutlets(await getOutlets()); } catch (e) { alert(`Error: ${e instanceof Error ? e.message : String(e)}`); }};
+  const handleDeleteOutlet = async (id: string) => { try { await deleteOutlet(id); setOutlets(prev => prev.filter(o => o.id !== id)); } catch (e) { alert(`Error: ${e instanceof Error ? e.message : String(e)}`); }};
 
   // Package Handlers
   const handleAddPackageTemplate = async (template: Omit<PackageTemplate, 'id'>) => {
-    const newTemplate = await addPackageTemplate(template);
-    setPackageTemplates(prev => [...prev, newTemplate]);
+    try {
+      const newTemplate = await addPackageTemplate(template);
+      setPackageTemplates(prev => [...prev, newTemplate]);
+    } catch (e) {
+      alert(`Error: ${e instanceof Error ? e.message : String(e)}`);
+    }
   };
   const handleDeletePackageTemplate = async (id: string) => {
-    await deletePackageTemplate(id);
-    setPackageTemplates(prev => prev.filter(t => t.id !== id));
+    try {
+      await deletePackageTemplate(id);
+      setPackageTemplates(prev => prev.filter(t => t.id !== id));
+    } catch (e) {
+      alert(`Error: ${e instanceof Error ? e.message : String(e)}`);
+    }
   };
   const handleAssignPackage = async (
     assignment: Omit<CustomerPackage, 'id' | 'assignedDate' | 'outletId' | 'remainingServiceValue' | 'packageTemplateId'>,
@@ -222,23 +236,25 @@ const App: React.FC = () => {
     } else { // Regular user
       if (!currentUserOutlet) return <div className="text-center p-8">Error: User outlet not found.</div>;
       switch (activeTab) {
-        case 'issue': return <IssueVoucher onIssueVoucher={handleIssueVoucher} outletName={currentUserOutlet.name} />;
+        case 'issue': return <IssueVoucher onIssueVoucher={handleIssueVoucher} />;
         case 'redeem': return <RedeemVoucher vouchers={vouchers} onRedeemVoucher={handleRedeemVoucher} />;
         case 'packages': return <Packages isAdmin={false} packageTemplates={packageTemplates} customerPackages={userCustomerPackages} onAssignPackage={handleAssignPackage} onRedeemFromPackage={handleRedeemFromPackage} outlets={outlets} allCustomerPackages={allCustomerPackages} serviceRecords={serviceRecords} outlet={currentUserOutlet} />;
-        default: return <IssueVoucher onIssueVoucher={handleIssueVoucher} outletName={currentUserOutlet.name} />;
+        default: return <IssueVoucher onIssueVoucher={handleIssueVoucher} />;
       }
     }
   };
 
   const TabButton = ({ tab, icon, label }: { tab: string, icon: React.ReactElement, label: string }) => (
-    <button onClick={() => setActiveTab(tab)} className={`flex flex-col items-center justify-center w-full pt-2 pb-1 transition-colors duration-200 ${activeTab === tab ? 'text-brand-primary' : 'text-brand-text-secondary hover:text-brand-text-primary'}`}>
-      {icon}
-      <span className="text-xs mt-1">{label}</span>
+    <button onClick={() => setActiveTab(tab)} className={`flex flex-col items-center justify-center w-full h-full transition-colors duration-200 ${activeTab === tab ? 'text-brand-primary' : 'text-brand-text-secondary hover:text-brand-text-primary'}`}>
+       <div className={`p-2 rounded-full ${activeTab === tab ? 'bg-brand-primary-light' : ''}`}>
+        {icon}
+      </div>
+      <span className="text-xs mt-1 font-medium">{label}</span>
     </button>
   );
 
   const SidebarButton = ({ tab, icon, label }: { tab: string, icon: React.ReactElement, label: string }) => (
-    <button onClick={() => setActiveTab(tab)} className={`flex items-center w-full px-4 py-3 transition-colors duration-200 rounded-lg ${activeTab === tab ? 'bg-brand-primary text-white' : 'text-brand-text-secondary hover:bg-gray-700 hover:text-brand-text-primary'}`}>
+    <button onClick={() => setActiveTab(tab)} className={`flex items-center w-full px-4 py-3 transition-colors duration-200 rounded-lg ${activeTab === tab ? 'bg-brand-primary text-white' : 'text-brand-text-secondary hover:bg-brand-primary-light hover:text-brand-primary'}`}>
       {icon}
       <span className="ml-4 font-medium">{label}</span>
     </button>
@@ -279,20 +295,20 @@ const App: React.FC = () => {
   );
 
   return (
-    <div className="h-screen w-screen text-brand-text-primary font-sans flex overflow-hidden">
+    <div className="h-screen w-screen text-brand-text-primary font-sans flex overflow-hidden bg-brand-background">
       {/* Sidebar for desktop */}
-      <aside className="hidden md:flex flex-col w-64 bg-brand-surface/90 backdrop-blur-sm border-r border-gray-700 flex-shrink-0">
-        <div className="h-20 flex items-center px-6 border-b border-gray-700">
+      <aside className="hidden md:flex flex-col w-64 bg-brand-surface border-r border-brand-border flex-shrink-0">
+        <div className="h-20 flex items-center px-6 border-b border-brand-border">
           <TicketIcon />
           <h1 className="ml-3 text-xl font-bold">Voucher Manager</h1>
         </div>
         <nav className="flex-grow p-4 space-y-2">
           {currentUser.role === 'admin' ? adminNav : userNav}
         </nav>
-        <div className="p-4 border-t border-gray-700">
+        <div className="p-4 border-t border-brand-border">
           <div className="text-sm">Welcome, <span className="font-bold capitalize">{currentUser.username}</span></div>
           <div className="text-xs text-brand-text-secondary">({currentUser.role})</div>
-          <button onClick={handleLogout} className="w-full mt-4 flex items-center justify-center text-sm text-brand-text-secondary hover:text-brand-text-primary transition-colors p-2 rounded-lg bg-gray-700 hover:bg-gray-600">
+          <button onClick={handleLogout} className="w-full mt-4 flex items-center justify-center text-sm text-brand-text-secondary hover:text-brand-text-primary transition-colors p-2 rounded-lg bg-brand-background hover:bg-brand-primary-light">
             <LogoutIcon />
             <span className="ml-2">Logout</span>
           </button>
@@ -301,7 +317,7 @@ const App: React.FC = () => {
 
       <div className="flex-1 flex flex-col">
         {/* Header for mobile */}
-        <header className="flex-shrink-0 bg-brand-surface/90 backdrop-blur-sm border-b border-gray-700 md:hidden">
+        <header className="flex-shrink-0 bg-brand-surface border-b border-brand-border md:hidden">
            <div className="p-4 flex justify-between items-center">
              <div className="text-sm">Welcome, <span className="font-bold capitalize">{currentUser.username}</span> ({currentUser.role})</div>
             <button onClick={handleLogout} className="flex items-center text-sm text-brand-text-secondary hover:text-brand-text-primary transition-colors p-2 -mr-2 rounded-md">
@@ -313,12 +329,12 @@ const App: React.FC = () => {
         {/* Main Content */}
         <main className="flex-1 overflow-y-auto pb-16 md:pb-0">
           <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
-            {isLoading ? <LoadingSpinner /> : renderContent()}
+            {error ? <div className="text-center p-8 text-red-500 bg-red-100 rounded-lg">{error}</div> : isLoading ? <LoadingSpinner /> : renderContent()}
           </div>
         </main>
 
         {/* Bottom Nav for mobile */}
-        <nav className="fixed bottom-0 left-0 right-0 h-16 bg-brand-surface/90 backdrop-blur-sm border-t border-gray-700 shadow-lg md:hidden">
+        <nav className="fixed bottom-0 left-0 right-0 h-16 bg-brand-surface border-t border-brand-border shadow-lg md:hidden">
           <div className="flex h-full">
             {currentUser.role === 'admin' ? adminMobileNav : userMobileNav}
           </div>

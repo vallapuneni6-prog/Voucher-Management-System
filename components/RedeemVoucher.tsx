@@ -38,18 +38,23 @@ export const RedeemVoucher: React.FC<RedeemVoucherProps> = ({ vouchers, onRedeem
       return;
     }
     
-    const success = await onRedeemVoucher(foundVoucher.id, redemptionBillNo);
-    if (success) {
-      setMessage({ text: 'Voucher redeemed successfully!', type: 'success' });
-      setFoundVoucher(v => v ? { ...v, status: VoucherStatus.REDEEMED } : null);
-      setRedemptionBillNo('');
-      setTimeout(() => {
-        setFoundVoucher(null);
-        setSearchTerm('');
-        setMessage(null);
-      }, 3000);
-    } else {
-      setMessage({ text: 'Failed to redeem voucher. It might be invalid or already used.', type: 'error' });
+    try {
+      const success = await onRedeemVoucher(foundVoucher.id, redemptionBillNo);
+      if (success) {
+        setMessage({ text: 'Voucher redeemed successfully!', type: 'success' });
+        setFoundVoucher(v => v ? { ...v, status: VoucherStatus.REDEEMED } : null);
+        setRedemptionBillNo('');
+        setTimeout(() => {
+          setFoundVoucher(null);
+          setSearchTerm('');
+          setMessage(null);
+        }, 3000);
+      } else {
+        setMessage({ text: 'Failed to redeem voucher. It might be invalid or already used.', type: 'error' });
+      }
+    } catch (error) {
+      console.error("Redemption error:", error);
+      setMessage({ text: `An error occurred: ${error instanceof Error ? error.message : String(error)}`, type: 'error' });
     }
   };
 
@@ -62,16 +67,16 @@ export const RedeemVoucher: React.FC<RedeemVoucherProps> = ({ vouchers, onRedeem
 
   const getStatusColor = (status: VoucherStatus) => {
     switch (status) {
-      case VoucherStatus.ISSUED: return 'text-blue-400';
-      case VoucherStatus.REDEEMED: return 'text-green-400';
-      case VoucherStatus.EXPIRED: return 'text-red-400';
+      case VoucherStatus.ISSUED: return 'text-blue-500';
+      case VoucherStatus.REDEEMED: return 'text-green-500';
+      case VoucherStatus.EXPIRED: return 'text-red-500';
     }
   }
 
   return (
     <div>
         <h1 className="text-3xl font-bold text-brand-text-primary mb-6 text-center">Redeem Voucher</h1>
-        <div className="max-w-md mx-auto bg-brand-surface/90 backdrop-blur-sm border border-gray-700 p-6 rounded-xl shadow-lg">
+        <div className="max-w-md mx-auto bg-brand-surface border border-brand-border p-6 rounded-xl shadow-sm">
             {!foundVoucher ? (
                 <form onSubmit={handleCheckStatus} className="space-y-4">
                     <label htmlFor="voucher-search" className="block text-sm font-medium text-brand-text-secondary">Enter Voucher ID or Scan QR</label>
@@ -82,9 +87,9 @@ export const RedeemVoucher: React.FC<RedeemVoucherProps> = ({ vouchers, onRedeem
                         value={searchTerm} 
                         onChange={e => setSearchTerm(e.target.value)} 
                         required 
-                        className="w-full bg-gray-700 text-white p-3 rounded-lg border border-gray-600 focus:outline-none focus:ring-2 focus:ring-brand-secondary"
+                        className="w-full bg-brand-surface text-brand-text-primary p-3 rounded-lg border border-brand-border focus:outline-none focus:ring-2 focus:ring-brand-primary"
                     />
-                    <button type="submit" className="w-full bg-brand-primary text-white py-3 font-semibold rounded-lg hover:bg-indigo-500">
+                    <button type="submit" className="w-full bg-brand-primary text-white py-3 font-semibold rounded-lg hover:opacity-90">
                         Check Status
                     </button>
                 </form>
@@ -92,7 +97,7 @@ export const RedeemVoucher: React.FC<RedeemVoucherProps> = ({ vouchers, onRedeem
                 <div>
                     <div className="flex justify-between items-center">
                         <h2 className="text-xl font-semibold mb-2 text-brand-text-primary">Voucher Details</h2>
-                        <button onClick={clearSearch} className="text-sm text-gray-400 hover:text-white">Clear</button>
+                        <button onClick={clearSearch} className="text-sm text-gray-400 hover:text-brand-text-primary">Clear</button>
                     </div>
                     <div className="space-y-2 mt-4 text-brand-text-secondary">
                         <p><strong>Name:</strong> <span className="text-brand-text-primary">{foundVoucher.recipientName}</span></p>
@@ -102,16 +107,16 @@ export const RedeemVoucher: React.FC<RedeemVoucherProps> = ({ vouchers, onRedeem
                     </div>
 
                     {foundVoucher.status === VoucherStatus.ISSUED && (
-                        <div className="mt-6 border-t border-gray-700 pt-4 space-y-4">
+                        <div className="mt-6 border-t border-brand-border pt-4 space-y-4">
                             <input 
                                 type="text" 
                                 placeholder="Redemption Bill No." 
                                 value={redemptionBillNo}
                                 onChange={e => setRedemptionBillNo(e.target.value)}
                                 required
-                                className="w-full bg-gray-700 text-white p-3 rounded-lg border border-gray-600 focus:outline-none focus:ring-2 focus:ring-brand-secondary"
+                                className="w-full bg-brand-surface text-brand-text-primary p-3 rounded-lg border border-brand-border focus:outline-none focus:ring-2 focus:ring-brand-primary"
                             />
-                            <button onClick={handleRedeem} className="w-full bg-brand-secondary text-white py-3 font-semibold rounded-lg hover:bg-green-500">
+                            <button onClick={handleRedeem} className="w-full bg-gradient-to-r from-brand-gradient-from to-brand-gradient-to text-white py-3 font-semibold rounded-lg hover:opacity-90">
                                 Redeem Now
                             </button>
                         </div>
@@ -119,7 +124,7 @@ export const RedeemVoucher: React.FC<RedeemVoucherProps> = ({ vouchers, onRedeem
                 </div>
             )}
              {message && (
-                <p className={`text-sm text-center mt-4 ${message.type === 'success' ? 'text-green-400' : message.type === 'error' ? 'text-red-400' : 'text-yellow-400'}`}>
+                <p className={`text-sm text-center mt-4 ${message.type === 'success' ? 'text-green-500' : message.type === 'error' ? 'text-red-500' : 'text-yellow-500'}`}>
                   {message.text}
                 </p>
               )}

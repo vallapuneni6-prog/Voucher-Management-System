@@ -5,19 +5,22 @@
     <link rel="icon" type="image/svg+xml" href="/icon.svg">
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Voucher Management</title>
-    <meta name="theme-color" content="#4F46E5" />
+    <meta name="theme-color" content="#8A4DFF" />
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
         theme: {
           extend: {
             colors: {
-              'brand-primary': '#4F46E5',
-              'brand-secondary': '#10B981',
-              'brand-background': '#111827',
-              'brand-surface': '#1F2937',
-              'brand-text-primary': '#F9FAFB',
-              'brand-text-secondary': '#9CA3AF',
+              'brand-primary': '#8A4DFF',
+              'brand-primary-light': '#E8DFFF',
+              'brand-gradient-from': '#A57FFD',
+              'brand-gradient-to': '#8A4DFF',
+              'brand-background': '#F0F1F6',
+              'brand-surface': '#FFFFFF',
+              'brand-text-primary': '#101828',
+              'brand-text-secondary': '#667085',
+              'brand-border': '#EAECF0',
             }
           }
         }
@@ -28,14 +31,10 @@
         height: 100%;
         margin: 0;
         padding: 0;
-        background-color: #111827; /* Dark fallback color */
+        background-color: #F0F1F6; /* Light app background */
       }
       body {
-        background-image: url('https://images.unsplash.com/photo-1599387737255-3454b5924502?q=80&w=2070&auto=format&fit=crop');
-        background-size: cover;
-        background-position: center;
-        background-repeat: no-repeat;
-        background-attachment: fixed;
+        /* background-image removed */
       }
     </style>
   <script type="importmap">

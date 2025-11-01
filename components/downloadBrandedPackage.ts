@@ -1,24 +1,14 @@
 import { CustomerPackage, PackageTemplate, Outlet } from '../types';
-import { naturalsLogoBase64 } from './logo';
 
-// Helper function to load an image
-const loadImage = (src: string): Promise<HTMLImageElement> => {
-    return new Promise((resolve, reject) => {
-        const img = new Image();
-        img.onload = () => resolve(img);
-        img.onerror = reject;
-        img.src = src;
-    });
-};
-
-
-export const downloadBrandedPackage = async (customerPackage: CustomerPackage, template: PackageTemplate, outlet: Outlet) => {
+export const generateBrandedPackageInvoiceImage = async (customerPackage: CustomerPackage, template: PackageTemplate, outlet: Outlet): Promise<string> => {
     const canvas = document.createElement('canvas');
+    if (!canvas.getContext) {
+        throw new Error('Canvas not supported or context could not be created.');
+    }
     const FONT_BASE = '"Courier New", Courier, monospace';
     const PADDING = 25;
     const canvasWidth = 450;
     
-    // Helper function to draw text and update Y
     const drawText = (ctx: CanvasRenderingContext2D, text: string, x: number, y: number, font: string, align: 'left' | 'center' | 'right' = 'left', color = '#000000') => {
         ctx.font = font;
         ctx.textAlign = align;
@@ -27,7 +17,7 @@ export const downloadBrandedPackage = async (customerPackage: CustomerPackage, t
     };
 
     const drawMultiLineText = (ctx: CanvasRenderingContext2D, text: string, x: number, y: number, font: string, lineHeight: number, align: 'left' | 'center' | 'right' = 'center') => {
-        const lines = text.split('\n');
+        const lines = (text || '').split('\n');
         lines.forEach((line, index) => {
             drawText(ctx, line, x, y + (index * lineHeight), font, align);
         });
@@ -38,7 +28,7 @@ export const downloadBrandedPackage = async (customerPackage: CustomerPackage, t
         drawText(ctx, '-'.repeat(42), canvasWidth / 2, y, `14px ${FONT_BASE}`, 'center');
     };
 
-    const drawItemRow = (ctx: CanvasRenderingContext2D, y: number, qty: string, name: string, price: string, amount: string) => {
+    const drawItemRow = (ctx: CanvasRenderingContext2D, y: number, name: string, price: string, amount: string) => {
         drawText(ctx, name, PADDING, y, `bold 16px ${FONT_BASE}`, 'left');
         drawText(ctx, `1 X ${price}`, PADDING, y + 20, `14px ${FONT_BASE}`, 'left');
         drawText(ctx, amount, canvasWidth - PADDING, y + 20, `16px ${FONT_BASE}`, 'right');
@@ -49,42 +39,36 @@ export const downloadBrandedPackage = async (customerPackage: CustomerPackage, t
          drawText(ctx, value, canvasWidth - PADDING, y, `${isBold ? 'bold ' : ''}16px ${FONT_BASE}`, 'right');
     }
 
-    // Pre-calculate height
     const dynamicHeight = 700;
     canvas.width = canvasWidth;
     canvas.height = dynamicHeight;
 
     const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    if (!ctx) {
+        throw new Error('Failed to create canvas context for invoice generation.');
+    }
     
     let y = 0;
 
-    // Background
     ctx.fillStyle = '#FFFFFF';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    // --- Header ---
-    const logoImg = await loadImage(naturalsLogoBase64);
-    const logoWidth = 250;
-    const logoHeight = logoImg.height * (logoWidth / logoImg.width);
-    const logoX = (canvas.width - logoWidth) / 2;
-    
-    y = 20;
-    ctx.drawImage(logoImg, logoX, y, logoWidth, logoHeight);
-    y += logoHeight;
-    y += 20;
+    y = 50;
+    drawText(ctx, 'Naturals', canvasWidth / 2, y, `bold 40px sans-serif`, 'center', '#000000');
+    y += 30;
+    drawText(ctx, "India's No.1 hair and beauty salon", canvasWidth / 2, y, `16px sans-serif`, 'center', '#000000');
+    y += 35;
 
-    drawText(ctx, outlet.name, canvasWidth / 2, y, `bold 18px ${FONT_BASE}`, 'center');
+    drawText(ctx, outlet.name || '', canvasWidth / 2, y, `bold 18px ${FONT_BASE}`, 'center');
     y += 20;
     y = drawMultiLineText(ctx, outlet.address, canvasWidth / 2, y, `14px ${FONT_BASE}`, 18, 'center');
     y += 25;
-    drawText(ctx, `GSTIN: ${outlet.gstin}`, canvasWidth / 2, y, `14px ${FONT_BASE}`, 'center');
+    drawText(ctx, `GSTIN: ${outlet.gstin || ''}`, canvasWidth / 2, y, `14px ${FONT_BASE}`, 'center');
     y += 20;
-    drawText(ctx, `PHONE: ${outlet.phone}`, canvasWidth / 2, y, `14px ${FONT_BASE}`, 'center');
+    drawText(ctx, `PHONE: ${outlet.phone || ''}`, canvasWidth / 2, y, `14px ${FONT_BASE}`, 'center');
     y += 20;
     drawSeparator(ctx, y);
 
-    // --- Customer Info ---
     y += 25;
     drawText(ctx, `NAME: ${customerPackage.customerName}`, PADDING, y, `14px ${FONT_BASE}`);
     y += 20;
@@ -98,10 +82,9 @@ export const downloadBrandedPackage = async (customerPackage: CustomerPackage, t
     y += 20;
     drawSeparator(ctx, y);
 
-    // --- Items ---
     y += 25;
     drawText(ctx, 'ITEM NAME', PADDING, y, `bold 14px ${FONT_BASE}`);
-    drawText(ctx, 'AMOUNT (SAVINGS)', canvasWidth - PADDING, y, `bold 14px ${FONT_BASE}`, 'right');
+    drawText(ctx, 'AMOUNT', canvasWidth - PADDING, y, `bold 14px ${FONT_BASE}`, 'right');
     y += 15;
     drawText(ctx, 'QTY X PRICE', PADDING, y, `bold 14px ${FONT_BASE}`);
     y += 10;
@@ -112,11 +95,10 @@ export const downloadBrandedPackage = async (customerPackage: CustomerPackage, t
     const discount = template.serviceValue - template.packageValue;
     const total = template.packageValue;
 
-    drawItemRow(ctx, y, '1', template.name.toUpperCase(), `₹${total.toFixed(2)}`, `₹${total.toFixed(2)}`);
+    drawItemRow(ctx, y, template.name.toUpperCase(), `₹${total.toFixed(2)}`, `₹${total.toFixed(2)}`);
     y += 45;
     drawSeparator(ctx, y);
     
-    // --- Totals ---
     y += 25;
     drawTotalRow(ctx, y, 'SUBTOTAL:', `₹${subtotal.toFixed(2)}`);
     y += 25;
@@ -138,7 +120,6 @@ export const downloadBrandedPackage = async (customerPackage: CustomerPackage, t
     ctx.lineTo(canvasWidth - PADDING, y);
     ctx.stroke();
     
-    // --- Footer ---
     y += 40;
     drawText(ctx, '0', canvasWidth / 2, y, `14px ${FONT_BASE}`, 'center');
     y += 25;
@@ -146,8 +127,5 @@ export const downloadBrandedPackage = async (customerPackage: CustomerPackage, t
     y += 20;
     drawText(ctx, '- - - * - - -', canvasWidth / 2, y, `14px ${FONT_BASE}`, 'center');
 
-    const link = document.createElement('a');
-    link.download = `invoice-${customerPackage.customerName.replace(/\s+/g, '-')}.png`;
-    link.href = canvas.toDataURL('image/png');
-    link.click();
+    return canvas.toDataURL('image/png');
 };
