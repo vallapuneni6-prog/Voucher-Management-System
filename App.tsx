@@ -236,10 +236,10 @@ const App: React.FC = () => {
     } else { // Regular user
       if (!currentUserOutlet) return <div className="text-center p-8">Error: User outlet not found.</div>;
       switch (activeTab) {
-        case 'issue': return <IssueVoucher onIssueVoucher={handleIssueVoucher} />;
+        case 'issue': return <IssueVoucher onIssueVoucher={handleIssueVoucher} outlet={currentUserOutlet} />;
         case 'redeem': return <RedeemVoucher vouchers={vouchers} onRedeemVoucher={handleRedeemVoucher} />;
         case 'packages': return <Packages isAdmin={false} packageTemplates={packageTemplates} customerPackages={userCustomerPackages} onAssignPackage={handleAssignPackage} onRedeemFromPackage={handleRedeemFromPackage} outlets={outlets} allCustomerPackages={allCustomerPackages} serviceRecords={serviceRecords} outlet={currentUserOutlet} />;
-        default: return <IssueVoucher onIssueVoucher={handleIssueVoucher} />;
+        default: return <IssueVoucher onIssueVoucher={handleIssueVoucher} outlet={currentUserOutlet} />;
       }
     }
   };

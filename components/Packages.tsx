@@ -30,10 +30,149 @@ export const Packages: React.FC<PackagesProps> = ({ isAdmin, packageTemplates, c
   const getOutletName = (outletId: string) => outlets.find(o => o.id === outletId)?.name ?? 'N/A';
   const getTemplate = (templateId: string) => packageTemplates.find(t => t.id === templateId);
   
-  // State and modals moved here to be shared between Admin and User views if needed
   const [historyModalPackage, setHistoryModalPackage] = useState<CustomerPackage | null>(null);
   const [invoiceImage, setInvoiceImage] = useState<string | null>(null);
   const [invoiceFilename, setInvoiceFilename] = useState<string>('');
+
+  const handleDownloadBill = async (transaction: ServiceRecord[], packageInfo: CustomerPackage) => {
+    try {
+      const packageOutlet = outlets.find(o => o.id === packageInfo.outletId);
+      if (!packageOutlet) {
+        throw new Error("Could not find outlet information for this package.");
+      }
+
+      const canvas = document.createElement('canvas');
+      const FONT_BASE = '"Courier New", Courier, monospace';
+      const PADDING = 25;
+      const canvasWidth = 450;
+      
+      const drawText = (ctx: CanvasRenderingContext2D, text: string, x: number, y: number, font: string, align: CanvasTextAlign = 'left', color = '#000000') => {
+        ctx.font = font;
+        ctx.textAlign = align;
+        ctx.fillStyle = color;
+        ctx.fillText(text, x, y);
+      };
+
+      const drawMultiLineText = (ctx: CanvasRenderingContext2D, text: string, x: number, y: number, font: string, lineHeight: number, align: CanvasTextAlign = 'center') => {
+        const lines = (text || '').split('\n');
+        lines.forEach((line, index) => {
+          drawText(ctx, line, x, y + (index * lineHeight), font, align);
+        });
+        return y + ((lines.length -1) * lineHeight);
+      };
+
+      const drawSeparator = (ctx: CanvasRenderingContext2D, y: number) => {
+        drawText(ctx, '-'.repeat(42), canvasWidth / 2, y, `14px ${FONT_BASE}`, 'center');
+      };
+      
+      const services = transaction;
+      const dynamicHeight = 650 + (services.length * 25);
+      canvas.width = canvasWidth;
+      canvas.height = dynamicHeight;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) { throw new Error('Failed to create canvas context for bill generation.'); }
+      
+      let y = 0;
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // 1. Header Section
+      y = 50;
+      drawText(ctx, 'Naturals', canvasWidth / 2, y, `bold 40px sans-serif`, 'center');
+      y += 30;
+      drawText(ctx, "India's No.1 hair and beauty salon", canvasWidth / 2, y, `16px sans-serif`, 'center');
+      y += 35;
+      drawText(ctx, packageOutlet.name, canvasWidth / 2, y, `bold 18px ${FONT_BASE}`, 'center');
+      y += 20;
+      y = drawMultiLineText(ctx, packageOutlet.address, canvasWidth / 2, y, `14px ${FONT_BASE}`, 18, 'center');
+      y += 25;
+      drawText(ctx, `GSTIN: ${packageOutlet.gstin}`, canvasWidth / 2, y, `14px ${FONT_BASE}`, 'center');
+      y += 20;
+      drawText(ctx, `PHONE: ${packageOutlet.phone}`, canvasWidth / 2, y, `14px ${FONT_BASE}`, 'center');
+      y += 20;
+      drawSeparator(ctx, y);
+
+      // 2. Customer & Bill Info Section
+      y += 25;
+      drawText(ctx, `NAME: ${packageInfo.customerName}`, PADDING, y, `14px ${FONT_BASE}`);
+      y += 20;
+      drawText(ctx, `PHONE: ${packageInfo.customerMobile}`, PADDING, y, `14px ${FONT_BASE}`);
+      y += 25;
+      const billDate = new Date(services[0].redeemedDate);
+      drawText(ctx, `BILL NO: ${services[0].transactionId.slice(-6).toUpperCase()}`, PADDING, y, `14px ${FONT_BASE}`);
+      drawText(ctx, `DATE: ${billDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase()}`, canvasWidth - PADDING, y, `14px ${FONT_BASE}`, 'right');
+      y += 20;
+      drawText(ctx, `TIME: ${billDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}`, canvasWidth - PADDING, y, `14px ${FONT_BASE}`, 'right');
+      y += 20;
+      drawSeparator(ctx, y);
+
+      // 3. Services List Section
+      y += 25;
+      drawText(ctx, 'SERVICE', PADDING, y, `bold 14px ${FONT_BASE}`);
+      drawText(ctx, 'VALUE', canvasWidth - PADDING, y, `bold 14px ${FONT_BASE}`, 'right');
+      y += 10;
+      drawSeparator(ctx, y);
+      y += 25;
+      
+      services.forEach(service => {
+          drawText(ctx, service.serviceName.toUpperCase(), PADDING, y, `16px ${FONT_BASE}`);
+          drawText(ctx, `₹${service.serviceValue.toFixed(2)}`, canvasWidth - PADDING, y, `16px ${FONT_BASE}`, 'right');
+          y += 25;
+      });
+      y += 10;
+      drawSeparator(ctx, y);
+
+      // 4. Totals Section
+      const totalRedeemedValue = services.reduce((sum, s) => sum + s.serviceValue, 0);
+      y += 25;
+      drawText(ctx, 'Total Redeemed Value:', canvasWidth - PADDING - 100, y, `bold 16px ${FONT_BASE}`, 'right');
+      drawText(ctx, `₹${totalRedeemedValue.toFixed(2)}`, canvasWidth - PADDING, y, `bold 16px ${FONT_BASE}`, 'right');
+      y += 25;
+      drawText(ctx, 'Amount Paid:', canvasWidth - PADDING - 100, y, `16px ${FONT_BASE}`, 'right');
+      drawText(ctx, `₹0.00`, canvasWidth - PADDING, y, `16px ${FONT_BASE}`, 'right');
+      y += 20;
+      
+      // 5. Package Balance Section
+      drawSeparator(ctx, y);
+      y += 25;
+      drawText(ctx, 'PACKAGE BALANCE', PADDING, y, `bold 16px ${FONT_BASE}`);
+      y += 25;
+
+      const balanceBefore = packageInfo.remainingServiceValue + totalRedeemedValue;
+      drawText(ctx, 'Balance Before:', canvasWidth - PADDING - 100, y, `16px ${FONT_BASE}`, 'right');
+      drawText(ctx, `₹${balanceBefore.toFixed(2)}`, canvasWidth - PADDING, y, `16px ${FONT_BASE}`, 'right');
+      y += 25;
+      drawText(ctx, 'This Redemption:', canvasWidth - PADDING - 100, y, `16px ${FONT_BASE}`, 'right');
+      drawText(ctx, `- ₹${totalRedeemedValue.toFixed(2)}`, canvasWidth - PADDING, y, `16px ${FONT_BASE}`, 'right');
+      y += 15;
+      
+      ctx.beginPath();
+      ctx.moveTo(canvasWidth - PADDING - 150, y);
+      ctx.lineTo(canvasWidth - PADDING, y);
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      y += 10;
+
+      drawText(ctx, 'Remaining Balance:', canvasWidth - PADDING - 100, y, `bold 16px ${FONT_BASE}`, 'right');
+      drawText(ctx, `₹${packageInfo.remainingServiceValue.toFixed(2)}`, canvasWidth - PADDING, y, `bold 16px ${FONT_BASE}`, 'right');
+      y += 25;
+      drawSeparator(ctx, y);
+
+      // 6. Footer Section
+      y += 30;
+      drawText(ctx, 'THANK YOU VISIT AGAIN!', canvasWidth / 2, y, `bold 14px ${FONT_BASE}`, 'center');
+
+      const link = document.createElement('a');
+      link.download = `redemption-bill-${packageInfo.customerName.replace(/\s+/g, '-')}-${services[0].transactionId.slice(-6)}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    } catch (error) {
+      console.error("Failed to download bill:", error);
+      alert(`Failed to download bill: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  };
+
 
   const AdminView = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -61,174 +200,6 @@ export const Packages: React.FC<PackagesProps> = ({ isAdmin, packageTemplates, c
         }
     };
     
-    // Logic for viewing history and invoices, adapted for Admin
-    const allServiceRecords = useMemo(() => {
-        let records: ServiceRecord[] = [];
-        if (isAdmin) {
-            // In a real app, you'd fetch all records. Here we simulate it.
-            // We assume `serviceRecords` passed to admin is complete.
-            const allPks = customerPackages.map(p => p.id);
-            // This part is tricky with seed data, let's assume `getServiceRecords` in App.tsx returns all records.
-            // For now, let's just use a placeholder. The best approach is to pass all records to the admin.
-             return customerPackages.flatMap(p => 
-                (p as any).serviceRecords || []
-             );
-        }
-        return [];
-    }, [customerPackages, isAdmin]);
-
-    const openHistoryModal = (pkg: CustomerPackage) => setHistoryModalPackage(pkg);
-    const closeHistoryModal = () => setHistoryModalPackage(null);
-
-    const handleDownloadBill = async (transaction: ServiceRecord[]) => {
-      try {
-        if (!historyModalPackage) return;
-        
-        const packageOutlet = outlets.find(o => o.id === historyModalPackage.outletId);
-        if (!packageOutlet) {
-            alert("Could not find outlet information for this package.");
-            return;
-        }
-
-        const canvas = document.createElement('canvas');
-        if (!canvas.getContext) {
-            alert('Canvas not supported or context could not be created.');
-            return;
-        }
-        const FONT_BASE = '"Courier New", Courier, monospace';
-        const PADDING = 25;
-        const canvasWidth = 450;
-        
-        const drawText = (ctx: CanvasRenderingContext2D, text: string, x: number, y: number, font: string, align: 'left' | 'center' | 'right' = 'left', color = '#000000') => {
-            ctx.font = font;
-            ctx.textAlign = align;
-            ctx.fillStyle = color;
-            ctx.fillText(text, x, y);
-        };
-
-        const drawMultiLineText = (ctx: CanvasRenderingContext2D, text: string, x: number, y: number, font: string, lineHeight: number, align: 'left' | 'center' | 'right' = 'center') => {
-            const lines = (text || '').split('\n');
-            lines.forEach((line, index) => {
-                drawText(ctx, line, x, y + (index * lineHeight), font, align);
-            });
-            return y + ((lines.length -1) * lineHeight);
-        };
-
-        const drawSeparator = (ctx: CanvasRenderingContext2D, y: number) => {
-            drawText(ctx, '-'.repeat(42), canvasWidth / 2, y, `14px ${FONT_BASE}`, 'center');
-        };
-        
-        const drawItemRow = (ctx: CanvasRenderingContext2D, y: number, name: string, mrp: number) => {
-            drawText(ctx, name.toUpperCase(), PADDING, y, `bold 16px ${FONT_BASE}`, 'left');
-            drawText(ctx, `1 X 0.00`, PADDING, y + 20, `14px ${FONT_BASE}`, 'left');
-            drawText(ctx, `[MRP ${mrp.toFixed(2)}]`, PADDING + 90, y + 20, `14px ${FONT_BASE}`, 'left');
-            drawText(ctx, `0 (${mrp.toFixed(2)})`, canvasWidth - PADDING, y + 20, `16px ${FONT_BASE}`, 'right');
-            return y + 25;
-        };
-        
-        const drawTotalRow = (ctx: CanvasRenderingContext2D, y: number, label: string, value: string, isBold: boolean = false) => {
-             drawText(ctx, label, PADDING + 150, y, `${isBold ? 'bold ' : ''}16px ${FONT_BASE}`, 'right');
-             drawText(ctx, value, canvasWidth - PADDING, y, `${isBold ? 'bold ' : ''}16px ${FONT_BASE}`, 'right');
-        }
-
-        const subtotal = transaction.reduce((sum, s) => sum + s.serviceValue, 0);
-        const dynamicHeight = 700 + (transaction.length * 45);
-        canvas.width = canvasWidth;
-        canvas.height = dynamicHeight;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-            alert('Failed to create canvas context for bill generation.');
-            return;
-        }
-        
-        let y = 0;
-
-        ctx.fillStyle = '#FFFFFF';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
-        y = 50;
-        drawText(ctx, 'Naturals', canvasWidth / 2, y, `bold 40px sans-serif`, 'center', '#000000');
-        y += 30;
-        drawText(ctx, "India's No.1 hair and beauty salon", canvasWidth / 2, y, `16px sans-serif`, 'center', '#000000');
-        y += 35;
-
-        drawText(ctx, packageOutlet.name || '', canvasWidth / 2, y, `bold 18px ${FONT_BASE}`, 'center');
-        y += 20;
-        y = drawMultiLineText(ctx, packageOutlet.address, canvasWidth / 2, y, `14px ${FONT_BASE}`, 18, 'center');
-        y += 25;
-        drawText(ctx, `GSTIN: ${packageOutlet.gstin || ''}`, canvasWidth / 2, y, `14px ${FONT_BASE}`, 'center');
-        y += 20;
-        drawText(ctx, `PHONE: ${packageOutlet.phone || ''}`, canvasWidth / 2, y, `14px ${FONT_BASE}`, 'center');
-        y += 20;
-        drawSeparator(ctx, y);
-
-        y += 25;
-        drawText(ctx, `NAME: ${historyModalPackage.customerName}`, PADDING, y, `14px ${FONT_BASE}`);
-        y += 20;
-        drawText(ctx, `PHONE: ${historyModalPackage.customerMobile}`, PADDING, y, `14px ${FONT_BASE}`);
-        y += 25;
-        const billDate = new Date(transaction[0].redeemedDate);
-        drawText(ctx, `BILL NO: ${transaction[0].transactionId.slice(-6).toUpperCase()}`, PADDING, y, `14px ${FONT_BASE}`);
-        drawText(ctx, `DATE: ${billDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase()}`, canvasWidth - PADDING, y, `14px ${FONT_BASE}`, 'right');
-        y += 20;
-        drawText(ctx, `TIME: ${billDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}`, canvasWidth - PADDING, y, `14px ${FONT_BASE}`, 'right');
-        y += 20;
-        drawSeparator(ctx, y);
-
-        y += 25;
-        drawText(ctx, 'ITEM NAME', PADDING, y, `bold 14px ${FONT_BASE}`);
-        drawText(ctx, 'AMOUNT (SAVINGS)', canvasWidth - PADDING, y, `bold 14px ${FONT_BASE}`, 'right');
-        y += 15;
-        drawText(ctx, 'QTY X PRICE', PADDING, y, `bold 14px ${FONT_BASE}`);
-        y += 10;
-        drawSeparator(ctx, y);
-        y += 25;
-        
-        transaction.forEach(service => {
-          y = drawItemRow(ctx, y, service.serviceName, service.serviceValue);
-        });
-        y += 20;
-        drawSeparator(ctx, y);
-
-        y += 25;
-        drawTotalRow(ctx, y, 'SUBTOTAL:', `₹${subtotal.toFixed(2)}`);
-        y += 25;
-        drawTotalRow(ctx, y, 'DISCOUNT:', `- ₹${subtotal.toFixed(2)}`);
-        y += 15;
-        ctx.strokeStyle = '#000';
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.moveTo(PADDING + 140, y);
-        ctx.lineTo(canvasWidth - PADDING, y);
-        ctx.stroke();
-        y += 10;
-        
-        y += 15;
-        drawTotalRow(ctx, y, 'TOTAL AMOUNT:', `₹0.00`, true);
-        y += 10;
-        ctx.beginPath();
-        ctx.moveTo(PADDING + 140, y);
-        ctx.lineTo(canvasWidth - PADDING, y);
-        ctx.stroke();
-
-        y += 40;
-        drawText(ctx, '0', canvasWidth / 2, y, `14px ${FONT_BASE}`, 'center');
-        y += 25;
-        drawText(ctx, 'THANK YOU VISIT AGAIN!', canvasWidth / 2, y, `bold 14px ${FONT_BASE}`, 'center');
-        y += 20;
-        drawText(ctx, '- - - * - - -', canvasWidth / 2, y, `14px ${FONT_BASE}`, 'center');
-
-
-        const link = document.createElement('a');
-        link.download = `bill-${historyModalPackage.customerName.replace(/\s+/g, '-')}-${transaction[0].transactionId}.png`;
-        link.href = canvas.toDataURL('image/png');
-        link.click();
-      } catch (error) {
-        console.error("Failed to download bill:", error);
-        alert(`Failed to download bill. See console for details.`);
-      }
-    };
-
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
@@ -443,155 +414,6 @@ export const Packages: React.FC<PackagesProps> = ({ isAdmin, packageTemplates, c
     
     // --- History Modal Logic ---
     const openHistoryModal = (pkg: CustomerPackage) => setHistoryModalPackage(pkg);
-    
-    const handleDownloadBill = async (transaction: ServiceRecord[]) => {
-      try {
-        if (!historyModalPackage) return;
-        
-        const packageOutlet = outlets.find(o => o.id === historyModalPackage.outletId);
-        if (!packageOutlet) {
-            alert("Could not find outlet information for this package.");
-            return;
-        }
-
-        const canvas = document.createElement('canvas');
-        if (!canvas.getContext) {
-            alert('Canvas not supported or context could not be created.');
-            return;
-        }
-        const FONT_BASE = '"Courier New", Courier, monospace';
-        const PADDING = 25;
-        const canvasWidth = 450;
-        
-        const drawText = (ctx: CanvasRenderingContext2D, text: string, x: number, y: number, font: string, align: 'left' | 'center' | 'right' = 'left', color = '#000000') => {
-            ctx.font = font;
-            ctx.textAlign = align;
-            ctx.fillStyle = color;
-            ctx.fillText(text, x, y);
-        };
-
-        const drawMultiLineText = (ctx: CanvasRenderingContext2D, text: string, x: number, y: number, font: string, lineHeight: number, align: 'left' | 'center' | 'right' = 'center') => {
-            const lines = (text || '').split('\n');
-            lines.forEach((line, index) => {
-                drawText(ctx, line, x, y + (index * lineHeight), font, align);
-            });
-            return y + ((lines.length -1) * lineHeight);
-        };
-
-        const drawSeparator = (ctx: CanvasRenderingContext2D, y: number) => {
-            drawText(ctx, '-'.repeat(42), canvasWidth / 2, y, `14px ${FONT_BASE}`, 'center');
-        };
-        
-        const drawItemRow = (ctx: CanvasRenderingContext2D, y: number, name: string, mrp: number) => {
-            drawText(ctx, name.toUpperCase(), PADDING, y, `bold 16px ${FONT_BASE}`, 'left');
-            drawText(ctx, `1 X 0.00`, PADDING, y + 20, `14px ${FONT_BASE}`, 'left');
-            drawText(ctx, `[MRP ${mrp.toFixed(2)}]`, PADDING + 90, y + 20, `14px ${FONT_BASE}`, 'left');
-            drawText(ctx, `0 (${mrp.toFixed(2)})`, canvasWidth - PADDING, y + 20, `16px ${FONT_BASE}`, 'right');
-            return y + 25;
-        };
-        
-        const drawTotalRow = (ctx: CanvasRenderingContext2D, y: number, label: string, value: string, isBold: boolean = false) => {
-             drawText(ctx, label, PADDING + 150, y, `${isBold ? 'bold ' : ''}16px ${FONT_BASE}`, 'right');
-             drawText(ctx, value, canvasWidth - PADDING, y, `${isBold ? 'bold ' : ''}16px ${FONT_BASE}`, 'right');
-        }
-
-        const subtotal = transaction.reduce((sum, s) => sum + s.serviceValue, 0);
-        const dynamicHeight = 700 + (transaction.length * 45);
-        canvas.width = canvasWidth;
-        canvas.height = dynamicHeight;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-            alert('Failed to create canvas context for bill generation.');
-            return;
-        }
-        
-        let y = 0;
-
-        ctx.fillStyle = '#FFFFFF';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
-        y = 50;
-        drawText(ctx, 'Naturals', canvasWidth / 2, y, `bold 40px sans-serif`, 'center', '#000000');
-        y += 30;
-        drawText(ctx, "India's No.1 hair and beauty salon", canvasWidth / 2, y, `16px sans-serif`, 'center', '#000000');
-        y += 35;
-
-        drawText(ctx, packageOutlet.name || '', canvasWidth / 2, y, `bold 18px ${FONT_BASE}`, 'center');
-        y += 20;
-        y = drawMultiLineText(ctx, packageOutlet.address, canvasWidth / 2, y, `14px ${FONT_BASE}`, 18, 'center');
-        y += 25;
-        drawText(ctx, `GSTIN: ${packageOutlet.gstin || ''}`, canvasWidth / 2, y, `14px ${FONT_BASE}`, 'center');
-        y += 20;
-        drawText(ctx, `PHONE: ${packageOutlet.phone || ''}`, canvasWidth / 2, y, `14px ${FONT_BASE}`, 'center');
-        y += 20;
-        drawSeparator(ctx, y);
-
-        y += 25;
-        drawText(ctx, `NAME: ${historyModalPackage.customerName}`, PADDING, y, `14px ${FONT_BASE}`);
-        y += 20;
-        drawText(ctx, `PHONE: ${historyModalPackage.customerMobile}`, PADDING, y, `14px ${FONT_BASE}`);
-        y += 25;
-        const billDate = new Date(transaction[0].redeemedDate);
-        drawText(ctx, `BILL NO: ${transaction[0].transactionId.slice(-6).toUpperCase()}`, PADDING, y, `14px ${FONT_BASE}`);
-        drawText(ctx, `DATE: ${billDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase()}`, canvasWidth - PADDING, y, `14px ${FONT_BASE}`, 'right');
-        y += 20;
-        drawText(ctx, `TIME: ${billDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}`, canvasWidth - PADDING, y, `14px ${FONT_BASE}`, 'right');
-        y += 20;
-        drawSeparator(ctx, y);
-
-        y += 25;
-        drawText(ctx, 'ITEM NAME', PADDING, y, `bold 14px ${FONT_BASE}`);
-        drawText(ctx, 'AMOUNT (SAVINGS)', canvasWidth - PADDING, y, `bold 14px ${FONT_BASE}`, 'right');
-        y += 15;
-        drawText(ctx, 'QTY X PRICE', PADDING, y, `bold 14px ${FONT_BASE}`);
-        y += 10;
-        drawSeparator(ctx, y);
-        y += 25;
-        
-        transaction.forEach(service => {
-          y = drawItemRow(ctx, y, service.serviceName, service.serviceValue);
-        });
-        y += 20;
-        drawSeparator(ctx, y);
-
-        y += 25;
-        drawTotalRow(ctx, y, 'SUBTOTAL:', `₹${subtotal.toFixed(2)}`);
-        y += 25;
-        drawTotalRow(ctx, y, 'DISCOUNT:', `- ₹${subtotal.toFixed(2)}`);
-        y += 15;
-        ctx.strokeStyle = '#000';
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.moveTo(PADDING + 140, y);
-        ctx.lineTo(canvasWidth - PADDING, y);
-        ctx.stroke();
-        y += 10;
-        
-        y += 15;
-        drawTotalRow(ctx, y, 'TOTAL AMOUNT:', `₹0.00`, true);
-        y += 10;
-        ctx.beginPath();
-        ctx.moveTo(PADDING + 140, y);
-        ctx.lineTo(canvasWidth - PADDING, y);
-        ctx.stroke();
-
-        y += 40;
-        drawText(ctx, '0', canvasWidth / 2, y, `14px ${FONT_BASE}`, 'center');
-        y += 25;
-        drawText(ctx, 'THANK YOU VISIT AGAIN!', canvasWidth / 2, y, `bold 14px ${FONT_BASE}`, 'center');
-        y += 20;
-        drawText(ctx, '- - - * - - -', canvasWidth / 2, y, `14px ${FONT_BASE}`, 'center');
-
-
-        const link = document.createElement('a');
-        link.download = `bill-${historyModalPackage.customerName.replace(/\s+/g, '-')}-${transaction[0].transactionId}.png`;
-        link.href = canvas.toDataURL('image/png');
-        link.click();
-      } catch (error) {
-        console.error("Failed to download bill:", error);
-        alert(`Failed to download bill. See console for details.`);
-      }
-    };
     
     return (
         <div className="space-y-8">
@@ -809,7 +631,7 @@ export const Packages: React.FC<PackagesProps> = ({ isAdmin, packageTemplates, c
                                     <p className="font-semibold">{new Date(transaction[0].redeemedDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
                                     <p className="text-xs text-brand-text-secondary">Bill No: {transaction[0].transactionId.slice(-6).toUpperCase()}</p>
                                   </div>
-                                  <button onClick={() => UserView().handleDownloadBill(transaction)} className="bg-brand-primary text-white font-semibold py-1 px-3 text-sm rounded-md hover:opacity-90">Download Bill</button>
+                                  <button onClick={() => handleDownloadBill(transaction, historyModalPackage)} className="bg-brand-primary text-white font-semibold py-1 px-3 text-sm rounded-md hover:opacity-90">Download Bill</button>
                                 </div>
                                 <ul className="list-disc list-inside text-sm space-y-1">
                                     {transaction.map(record => (

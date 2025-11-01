@@ -43,7 +43,7 @@ export const addVoucher = (newVoucherData: Omit<Voucher, 'id'>, outletCode: stri
       const vouchers: Voucher[] = getFromStorage('vouchers', SEED_VOUCHERS);
       const newVoucher: Voucher = {
         ...newVoucherData,
-        id: `${outletCode}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`,
+        id: `NAT-${outletCode}-${Math.random().toString(36).substr(2, 3).toUpperCase()}`,
       };
       const updatedVouchers = [...vouchers, newVoucher];
       localStorage.setItem('vouchers', JSON.stringify(updatedVouchers));

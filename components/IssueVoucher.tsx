@@ -1,12 +1,13 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { Voucher, VoucherType } from '../types';
+import { Voucher, VoucherType, Outlet } from '../types';
 import { generateBrandedVoucherImage } from './downloadBrandedVoucher';
 
 interface IssueVoucherProps {
   onIssueVoucher: (newVoucherData: Omit<Voucher, 'id' | 'issueDate' | 'status' | 'outletId'>) => Promise<Voucher>;
+  outlet: Outlet | null;
 }
 
-export const IssueVoucher: React.FC<IssueVoucherProps> = ({ onIssueVoucher }) => {
+export const IssueVoucher: React.FC<IssueVoucherProps> = ({ onIssueVoucher, outlet }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [voucherType, setVoucherType] = useState<VoucherType | null>(null);
   
@@ -72,7 +73,7 @@ export const IssueVoucher: React.FC<IssueVoucherProps> = ({ onIssueVoucher }) =>
   const handleShowVoucher = async (voucher: Voucher) => {
     setIsGenerating(true);
     try {
-      const imageDataUrl = await generateBrandedVoucherImage(voucher);
+      const imageDataUrl = await generateBrandedVoucherImage(voucher, outlet);
       setVoucherImage(imageDataUrl);
       setIsVoucherPreviewOpen(true);
     } catch (error) {

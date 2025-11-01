@@ -1,9 +1,9 @@
-import { Voucher } from '../types';
+import { Voucher, Outlet } from '../types';
 
 // The flower image from the design is omitted as it's a complex illustration not easily reproducible with code.
 // The core layout, colors, and text from the design are replicated.
 
-export const generateBrandedVoucherImage = async (voucher: Voucher): Promise<string> => {
+export const generateBrandedVoucherImage = async (voucher: Voucher, outlet: Outlet | null): Promise<string> => {
     return new Promise((resolve, reject) => {
         const canvas = document.createElement('canvas');
         canvas.width = 1200;
@@ -34,6 +34,12 @@ export const generateBrandedVoucherImage = async (voucher: Voucher): Promise<str
         ctx.fillText('naturals', 60, 80);
         ctx.font = '20px sans-serif';
         ctx.fillText("India's No.1 hair and beauty salon", 60, 110);
+        
+        if (outlet) {
+            ctx.fillStyle = '#000000';
+            ctx.font = 'bold 32px sans-serif'; // h3 style
+            ctx.fillText(outlet.name, 60, 155);
+        }
         
         // Voucher Title
         ctx.fillStyle = '#000000';
