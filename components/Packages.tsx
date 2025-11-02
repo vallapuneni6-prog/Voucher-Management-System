@@ -25,6 +25,23 @@ interface PackagesProps {
   outlet?: Outlet | null;
 }
 
+// Helper function to convert a data URI to a Blob, which is more reliable for downloads
+const dataURItoBlob = (dataURI: string): Blob | null => {
+    try {
+        const byteString = atob(dataURI.split(',')[1]);
+        const mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0];
+        const ab = new ArrayBuffer(byteString.length);
+        const ia = new Uint8Array(ab);
+        for (let i = 0; i < byteString.length; i++) {
+            ia[i] = byteString.charCodeAt(i);
+        }
+        return new Blob([ab], { type: mimeString });
+    } catch (error) {
+        console.error("Failed to convert data URI to Blob", error);
+        return null;
+    }
+};
+
 export const Packages: React.FC<PackagesProps> = ({ isAdmin, packageTemplates, customerPackages, allCustomerPackages, outlets, onAddTemplate, onDeleteTemplate, onAssignPackage, onRedeemFromPackage, serviceRecords, outlet }) => {
 
   const getOutletName = (outletId: string) => outlets.find(o => o.id === outletId)?.name ?? 'N/A';
@@ -164,6 +181,27 @@ export const Packages: React.FC<PackagesProps> = ({ isAdmin, packageTemplates, c
         console.error("Failed to generate and show redemption bill:", error);
         alert(`Failed to generate bill: ${error instanceof Error ? error.message : String(error)}`);
     }
+  };
+
+  const handleDownloadInvoice = (e: React.MouseEvent<HTMLAnchorElement>) => {
+      e.preventDefault();
+      if (!invoiceImage || !invoiceFilename) return;
+
+      const blob = dataURItoBlob(invoiceImage);
+      if (!blob) {
+          alert("Sorry, there was an error preparing the download.");
+          return;
+      }
+
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', invoiceFilename);
+      document.body.appendChild(link);
+      link.click();
+      
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
   };
 
   const AdminView = () => {
@@ -676,6 +714,7 @@ export const Packages: React.FC<PackagesProps> = ({ isAdmin, packageTemplates, c
                     <a 
                         href={invoiceImage} 
                         download={invoiceFilename}
+                        onClick={handleDownloadInvoice}
                         className="bg-brand-primary text-white py-2 px-4 rounded-lg hover:opacity-90 inline-block"
                     >
                         Download

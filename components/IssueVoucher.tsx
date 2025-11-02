@@ -2,9 +2,27 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { Voucher, VoucherType, Outlet } from '../types';
 import { generateBrandedVoucherImage } from './downloadBrandedVoucher';
 
+// Helper function to convert a data URI to a Blob, which is more reliable for downloads
+const dataURItoBlob = (dataURI: string): Blob | null => {
+    try {
+        const byteString = atob(dataURI.split(',')[1]);
+        const mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0];
+        const ab = new ArrayBuffer(byteString.length);
+        const ia = new Uint8Array(ab);
+        for (let i = 0; i < byteString.length; i++) {
+            ia[i] = byteString.charCodeAt(i);
+        }
+        return new Blob([ab], { type: mimeString });
+    } catch (error) {
+        console.error("Failed to convert data URI to Blob", error);
+        return null;
+    }
+};
+
+// FIX: Define props interface for IssueVoucher component
 interface IssueVoucherProps {
-  onIssueVoucher: (newVoucherData: Omit<Voucher, 'id' | 'issueDate' | 'status' | 'outletId'>) => Promise<Voucher>;
-  outlet: Outlet | null;
+  onIssueVoucher: (voucher: Omit<Voucher, 'id' | 'issueDate' | 'status' | 'outletId'>) => Promise<Voucher>;
+  outlet: Outlet;
 }
 
 export const IssueVoucher: React.FC<IssueVoucherProps> = ({ onIssueVoucher, outlet }) => {
@@ -89,6 +107,28 @@ export const IssueVoucher: React.FC<IssueVoucherProps> = ({ onIssueVoucher, outl
     setVoucherImage(null);
   };
   
+  const handleDownloadVoucher = (e: React.MouseEvent<HTMLAnchorElement>) => {
+      e.preventDefault();
+      if (!voucherImage || !lastVoucher) return;
+
+      const filename = `voucher-${lastVoucher.id}.png`;
+      const blob = dataURItoBlob(voucherImage);
+      if (!blob) {
+          alert("Sorry, there was an error preparing the download.");
+          return;
+      }
+
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+  };
+
   useEffect(() => {
      const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -235,6 +275,7 @@ export const IssueVoucher: React.FC<IssueVoucherProps> = ({ onIssueVoucher, outl
                     <a 
                         href={voucherImage} 
                         download={`voucher-${lastVoucher?.id}.png`}
+                        onClick={handleDownloadVoucher}
                         className="bg-brand-primary text-white py-2 px-4 rounded-lg hover:opacity-90 inline-block"
                     >
                         Download
