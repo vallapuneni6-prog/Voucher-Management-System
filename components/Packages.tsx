@@ -34,9 +34,7 @@ export const Packages: React.FC<PackagesProps> = ({ isAdmin, packageTemplates, c
   const [invoiceImage, setInvoiceImage] = useState<string | null>(null);
   const [invoiceFilename, setInvoiceFilename] = useState<string>('');
 
-  // Fix: Moved `generateAndDownloadRedemptionBill` to the parent component scope to make it accessible by `HistoryModal`.
-  const generateAndDownloadRedemptionBill = async (transaction: ServiceRecord[], packageInfo: CustomerPackage) => {
-    // This function generates a PNG image of a bill for redeemed services.
+  const generateAndShowRedemptionBill = async (transaction: ServiceRecord[], packageInfo: CustomerPackage) => {
     try {
         const packageOutlet = outlets.find(o => o.id === packageInfo.outletId);
         if (!packageOutlet) {
@@ -48,7 +46,6 @@ export const Packages: React.FC<PackagesProps> = ({ isAdmin, packageTemplates, c
         const PADDING = 25;
         const CANVAS_WIDTH = 450;
         
-        // Helper functions for drawing
         const drawText = (ctx: CanvasRenderingContext2D, text: string, x: number, y: number, font: string, align: CanvasTextAlign = 'left', color = '#000000') => {
             ctx.font = font;
             ctx.textAlign = align;
@@ -68,8 +65,7 @@ export const Packages: React.FC<PackagesProps> = ({ isAdmin, packageTemplates, c
             drawText(ctx, '-'.repeat(42), CANVAS_WIDTH / 2, y, `14px ${FONT_BASE}`, 'center');
         };
         
-        // Calculate dynamic height based on number of services
-        const services = transaction; // for clarity
+        const services = transaction;
         const dynamicHeight = 650 + (services.length * 25);
         canvas.width = CANVAS_WIDTH;
         canvas.height = dynamicHeight;
@@ -80,7 +76,6 @@ export const Packages: React.FC<PackagesProps> = ({ isAdmin, packageTemplates, c
         ctx.fillStyle = '#FFFFFF';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         
-        // --- 1. Header Section ---
         y = 50;
         drawText(ctx, 'Naturals', CANVAS_WIDTH / 2, y, `bold 40px sans-serif`, 'center');
         y += 30;
@@ -96,7 +91,6 @@ export const Packages: React.FC<PackagesProps> = ({ isAdmin, packageTemplates, c
         y += 20;
         drawSeparator(ctx, y);
 
-        // --- 2. Customer & Bill Info Section ---
         y += 25;
         drawText(ctx, `NAME: ${packageInfo.customerName}`, PADDING, y, `14px ${FONT_BASE}`);
         y += 20;
@@ -110,7 +104,6 @@ export const Packages: React.FC<PackagesProps> = ({ isAdmin, packageTemplates, c
         y += 20;
         drawSeparator(ctx, y);
 
-        // --- 3. Services List Section (Itemized Services) ---
         y += 25;
         drawText(ctx, 'SERVICE', PADDING, y, `bold 14px ${FONT_BASE}`);
         drawText(ctx, 'VALUE', CANVAS_WIDTH - PADDING, y, `bold 14px ${FONT_BASE}`, 'right');
@@ -126,7 +119,6 @@ export const Packages: React.FC<PackagesProps> = ({ isAdmin, packageTemplates, c
         y += 10;
         drawSeparator(ctx, y);
 
-        // --- 4. Totals Section ---
         const totalRedeemedValue = services.reduce((sum, s) => sum + s.serviceValue, 0);
         y += 25;
         drawText(ctx, 'Total Redeemed Value:', CANVAS_WIDTH - PADDING - 100, y, `bold 16px ${FONT_BASE}`, 'right');
@@ -136,13 +128,11 @@ export const Packages: React.FC<PackagesProps> = ({ isAdmin, packageTemplates, c
         drawText(ctx, `₹0.00`, CANVAS_WIDTH - PADDING, y, `16px ${FONT_BASE}`, 'right');
         y += 20;
   
-        // --- 5. Package Balance Section ---
         drawSeparator(ctx, y);
         y += 25;
         drawText(ctx, 'PACKAGE BALANCE', PADDING, y, `bold 16px ${FONT_BASE}`);
         y += 25;
 
-        // This calculation is key: Balance *after* redemption + value of redemption = balance *before*
         const balanceBefore = packageInfo.remainingServiceValue + totalRedeemedValue;
         drawText(ctx, 'Balance Before:', CANVAS_WIDTH - PADDING - 100, y, `16px ${FONT_BASE}`, 'right');
         drawText(ctx, `₹${balanceBefore.toFixed(2)}`, CANVAS_WIDTH - PADDING, y, `16px ${FONT_BASE}`, 'right');
@@ -151,7 +141,6 @@ export const Packages: React.FC<PackagesProps> = ({ isAdmin, packageTemplates, c
         drawText(ctx, `- ₹${totalRedeemedValue.toFixed(2)}`, CANVAS_WIDTH - PADDING, y, `16px ${FONT_BASE}`, 'right');
         y += 15;
         
-        // Draw a line separator for the total
         ctx.beginPath();
         ctx.moveTo(CANVAS_WIDTH - PADDING - 150, y);
         ctx.lineTo(CANVAS_WIDTH - PADDING, y);
@@ -165,18 +154,14 @@ export const Packages: React.FC<PackagesProps> = ({ isAdmin, packageTemplates, c
         y += 25;
         drawSeparator(ctx, y);
 
-        // --- 6. Footer Section ---
         y += 30;
         drawText(ctx, 'THANK YOU VISIT AGAIN!', CANVAS_WIDTH / 2, y, `bold 14px ${FONT_BASE}`, 'center');
 
-        // --- Trigger Download ---
-        const link = document.createElement('a');
-        link.download = `redemption-bill-${packageInfo.customerName.replace(/\s+/g, '-')}-${services[0].transactionId.slice(-6)}.png`;
-        link.href = canvas.toDataURL('image/png');
-        link.click();
+        setInvoiceImage(canvas.toDataURL('image/png'));
+        setInvoiceFilename(`redemption-bill-${packageInfo.customerName.replace(/\s+/g, '-')}-${services[0].transactionId.slice(-6)}.png`);
 
     } catch (error) {
-        console.error("Failed to generate and download redemption bill:", error);
+        console.error("Failed to generate and show redemption bill:", error);
         alert(`Failed to generate bill: ${error instanceof Error ? error.message : String(error)}`);
     }
   };
@@ -359,14 +344,12 @@ export const Packages: React.FC<PackagesProps> = ({ isAdmin, packageTemplates, c
                 date
             );
             
-            // Generate and show invoice
             if (outlet) {
                const image = await generateBrandedPackageInvoiceImage(newPackage, template, outlet, initialServicesParsed.map(s => ({...s, id: '', customerPackageId: newPackage.id, redeemedDate: new Date(date), transactionId: '' })));
                setInvoiceImage(image);
                setInvoiceFilename(`invoice-${newPackage.customerName.replace(/\s+/g, '-')}-${newPackage.id.slice(-4)}.png`);
             }
 
-            // Reset form
             setCustomerName('');
             setCustomerMobile('');
             setSelectedTemplateId('');
@@ -405,32 +388,28 @@ export const Packages: React.FC<PackagesProps> = ({ isAdmin, packageTemplates, c
         try {
             await onRedeemFromPackage(selectedPackage.id, servicesParsed, date);
 
-            // Find the transaction that just happened to generate the bill
-            const tempTransactionId = `temp-id-${Date.now()}`; // Not real, just for grouping
+            const tempTransactionId = `temp-id-${Date.now()}`;
             const transactionForBill: ServiceRecord[] = servicesParsed.map(s => ({
                 id: `temp-${Math.random()}`,
                 customerPackageId: selectedPackage.id,
                 serviceName: s.serviceName,
                 serviceValue: s.serviceValue,
                 redeemedDate: new Date(date),
-                transactionId: tempTransactionId, // A temporary ID for grouping
+                transactionId: tempTransactionId,
             }));
 
-            // We need to pass the *updated* package info to the bill generator
             const totalRedeemed = servicesParsed.reduce((sum, s) => sum + s.serviceValue, 0);
             const updatedPackageInfo: CustomerPackage = {
                 ...selectedPackage,
                 remainingServiceValue: selectedPackage.remainingServiceValue - totalRedeemed
             };
 
-            await generateAndDownloadRedemptionBill(transactionForBill, updatedPackageInfo);
+            await generateAndShowRedemptionBill(transactionForBill, updatedPackageInfo);
 
-            // Reset form
             setSelectedPackage(null);
             setSearchTerm('');
             setServicesToRedeem([]);
             setDate(new Date().toISOString().slice(0, 10));
-            alert("Services redeemed successfully!");
             
         } catch(error) {
             console.error("Failed to redeem from package:", error);
@@ -658,16 +637,16 @@ export const Packages: React.FC<PackagesProps> = ({ isAdmin, packageTemplates, c
                     );
                   })
                 ) : (
-                  <p className="text-brand-text-secondary text-center py-4">No customer packages have been assigned from this outlet.</p>
+                  <p className="text-brand-text-secondary text-center py-4">No customer packages assigned in this outlet yet.</p>
                 )}
             </div>
-            
+
             {historyModalPackage && serviceRecords && (
                 <HistoryModal
                     packageInfo={historyModalPackage}
-                    packageRecords={serviceRecords.filter(sr => sr.customerPackageId === historyModalPackage.id) || []}
+                    packageRecords={serviceRecords.filter(r => r.customerPackageId === historyModalPackage.id)}
                     onClose={() => setHistoryModalPackage(null)}
-                    onDownloadBill={generateAndDownloadRedemptionBill}
+                    onDownloadBill={generateAndShowRedemptionBill}
                 />
             )}
         </div>
@@ -675,23 +654,36 @@ export const Packages: React.FC<PackagesProps> = ({ isAdmin, packageTemplates, c
   };
   
   return (
-    <div>
-        {isAdmin ? <AdminView /> : <UserView />}
-        
-        {invoiceImage && (
-             <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[60] p-4">
-                <div className="bg-brand-surface rounded-xl p-4 w-full max-w-lg max-h-[90vh] flex flex-col border border-brand-border shadow-2xl">
-                    <h2 className="text-xl font-bold mb-4 flex-shrink-0">Invoice Preview</h2>
-                    <div className="overflow-y-auto flex-1 bg-gray-100 p-2 rounded-lg border">
-                        <img src={invoiceImage} alt="Generated Invoice" className="w-full h-auto" />
-                    </div>
-                    <div className="flex justify-end gap-3 pt-4 mt-4 border-t border-brand-border flex-shrink-0">
-                        <button onClick={() => setInvoiceImage(null)} className="bg-gray-100 text-brand-text-primary py-2 px-4 rounded-lg">Close</button>
-                        <a href={invoiceImage} download={invoiceFilename} className="bg-brand-primary text-white py-2 px-4 rounded-lg">Download</a>
-                    </div>
+    <>
+      {isAdmin ? <AdminView /> : <UserView />}
+
+      {invoiceImage && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[60] p-4"
+          role="dialog"
+          aria-modal="true"
+        >
+            <div className="bg-brand-surface rounded-xl p-4 w-full max-w-lg max-h-[90vh] flex flex-col border border-brand-border shadow-2xl">
+                <h2 className="text-xl font-bold mb-4 flex-shrink-0 text-brand-text-primary">Invoice Preview</h2>
+                <div className="overflow-y-auto flex-1 bg-gray-100 p-2 rounded-lg border border-brand-border">
+                    <img src={invoiceImage} alt="Generated Invoice/Bill" className="w-full h-auto" />
+                </div>
+                <p className="text-xs text-brand-text-secondary text-center mt-2">On mobile, you can long-press the image to save it.</p>
+                <div className="flex justify-end gap-3 pt-4 mt-4 border-t border-brand-border flex-shrink-0">
+                    <button onClick={() => setInvoiceImage(null)} className="bg-gray-100 text-brand-text-primary py-2 px-4 rounded-lg hover:bg-gray-200">
+                        Close
+                    </button>
+                    <a 
+                        href={invoiceImage} 
+                        download={invoiceFilename}
+                        className="bg-brand-primary text-white py-2 px-4 rounded-lg hover:opacity-90 inline-block"
+                    >
+                        Download
+                    </a>
                 </div>
             </div>
-        )}
-    </div>
+        </div>
+      )}
+    </>
   );
 };
