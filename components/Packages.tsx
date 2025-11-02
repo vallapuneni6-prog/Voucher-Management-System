@@ -50,6 +50,24 @@ export const Packages: React.FC<PackagesProps> = ({ isAdmin, packageTemplates, c
   const [historyModalPackage, setHistoryModalPackage] = useState<CustomerPackage | null>(null);
   const [invoiceImage, setInvoiceImage] = useState<string | null>(null);
   const [invoiceFilename, setInvoiceFilename] = useState<string>('');
+  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+
+  // When invoiceImage is generated, create a corresponding blob URL for download
+  useEffect(() => {
+    if (invoiceImage) {
+      const blob = dataURItoBlob(invoiceImage);
+      if (blob) {
+        const url = URL.createObjectURL(blob);
+        setDownloadUrl(url);
+
+        // Cleanup function to revoke the object URL when component unmounts or image changes
+        return () => {
+          URL.revokeObjectURL(url);
+          setDownloadUrl(null);
+        };
+      }
+    }
+  }, [invoiceImage]);
 
   const generateAndShowRedemptionBill = async (transaction: ServiceRecord[], packageInfo: CustomerPackage) => {
     try {
@@ -181,27 +199,6 @@ export const Packages: React.FC<PackagesProps> = ({ isAdmin, packageTemplates, c
         console.error("Failed to generate and show redemption bill:", error);
         alert(`Failed to generate bill: ${error instanceof Error ? error.message : String(error)}`);
     }
-  };
-
-  const handleDownloadInvoice = (e: React.MouseEvent<HTMLAnchorElement>) => {
-      e.preventDefault();
-      if (!invoiceImage || !invoiceFilename) return;
-
-      const blob = dataURItoBlob(invoiceImage);
-      if (!blob) {
-          alert("Sorry, there was an error preparing the download.");
-          return;
-      }
-
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', invoiceFilename);
-      document.body.appendChild(link);
-      link.click();
-      
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
   };
 
   const AdminView = () => {
@@ -706,16 +703,15 @@ export const Packages: React.FC<PackagesProps> = ({ isAdmin, packageTemplates, c
                 <div className="overflow-y-auto flex-1 bg-gray-100 p-2 rounded-lg border border-brand-border">
                     <img src={invoiceImage} alt="Generated Invoice/Bill" className="w-full h-auto" />
                 </div>
-                <p className="text-xs text-brand-text-secondary text-center mt-2">On mobile, you can long-press the image to save it.</p>
+                <p className="text-xs text-brand-text-secondary text-center mt-2">Use the 'Download' button to save the image to your device.</p>
                 <div className="flex justify-end gap-3 pt-4 mt-4 border-t border-brand-border flex-shrink-0">
                     <button onClick={() => setInvoiceImage(null)} className="bg-gray-100 text-brand-text-primary py-2 px-4 rounded-lg hover:bg-gray-200">
                         Close
                     </button>
                     <a 
-                        href={invoiceImage} 
+                        href={downloadUrl || '#'} 
                         download={invoiceFilename}
-                        onClick={handleDownloadInvoice}
-                        className="bg-brand-primary text-white py-2 px-4 rounded-lg hover:opacity-90 inline-block"
+                        className={`bg-brand-primary text-white py-2 px-4 rounded-lg hover:opacity-90 inline-block ${!downloadUrl ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
                         Download
                     </a>
