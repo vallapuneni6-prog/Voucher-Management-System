@@ -147,12 +147,12 @@ const App: React.FC = () => {
   };
   
   // User/Outlet CRUD Handlers
-  const handleAddUser = async (user: Omit<User, 'id'>) => { try { await addUser(user); setUsers(await getUsers()); } catch (e) { alert(`Error: ${e instanceof Error ? e.message : String(e)}`); }};
-  const handleUpdateUser = async (user: User) => { try { await updateUser(user); setUsers(await getUsers()); } catch (e) { alert(`Error: ${e instanceof Error ? e.message : String(e)}`); }};
+  const handleAddUser = async (user: Omit<User, 'id'>) => { try { const newUser = await addUser(user); setUsers(prev => [...prev, newUser]); } catch (e) { alert(`Error: ${e instanceof Error ? e.message : String(e)}`); }};
+  const handleUpdateUser = async (user: User) => { try { const updatedUser = await updateUser(user); setUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUser : u)); } catch (e) { alert(`Error: ${e instanceof Error ? e.message : String(e)}`); }};
   const handleDeleteUser = async (id: string) => { try { await deleteUser(id); setUsers(prev => prev.filter(u => u.id !== id)); } catch (e) { alert(`Error: ${e instanceof Error ? e.message : String(e)}`); }};
 
-  const handleAddOutlet = async (outlet: Omit<Outlet, 'id'>) => { try { await addOutlet(outlet); setOutlets(await getOutlets()); } catch (e) { alert(`Error: ${e instanceof Error ? e.message : String(e)}`); }};
-  const handleUpdateOutlet = async (outlet: Outlet) => { try { await updateOutlet(outlet); setOutlets(await getOutlets()); } catch (e) { alert(`Error: ${e instanceof Error ? e.message : String(e)}`); }};
+  const handleAddOutlet = async (outlet: Omit<Outlet, 'id'>) => { try { const newOutlet = await addOutlet(outlet); setOutlets(prev => [...prev, newOutlet]); } catch (e) { alert(`Error: ${e instanceof Error ? e.message : String(e)}`); }};
+  const handleUpdateOutlet = async (outlet: Outlet) => { try { const updatedOutlet = await updateOutlet(outlet); setOutlets(prev => prev.map(o => o.id === updatedOutlet.id ? updatedOutlet : o)); } catch (e) { alert(`Error: ${e instanceof Error ? e.message : String(e)}`); }};
   const handleDeleteOutlet = async (id: string) => { try { await deleteOutlet(id); setOutlets(prev => prev.filter(o => o.id !== id)); } catch (e) { alert(`Error: ${e instanceof Error ? e.message : String(e)}`); }};
 
   // Package Handlers
@@ -298,48 +298,43 @@ const App: React.FC = () => {
     <div className="h-screen w-screen text-brand-text-primary font-sans flex overflow-hidden bg-brand-background">
       {/* Sidebar for desktop */}
       <aside className="hidden md:flex flex-col w-64 bg-brand-surface border-r border-brand-border flex-shrink-0">
-        <div className="h-20 flex items-center px-6 border-b border-brand-border">
-          <TicketIcon />
-          <h1 className="ml-3 text-xl font-bold">Voucher Manager</h1>
+        <div className="h-20 flex flex-col items-center justify-center px-6 border-b border-brand-border text-center">
+           <h1 className="text-3xl font-bold text-brand-primary">naturals</h1>
+           <p className="text-[10px] text-brand-text-secondary tracking-[0.15em] mt-1">VOUCHER PORTAL</p>
         </div>
-        <nav className="flex-grow p-4 space-y-2">
+        <nav className="flex-1 px-4 py-6 space-y-2">
           {currentUser.role === 'admin' ? adminNav : userNav}
         </nav>
-        <div className="p-4 border-t border-brand-border">
-          <div className="text-sm">Welcome, <span className="font-bold capitalize">{currentUser.username}</span></div>
-          <div className="text-xs text-brand-text-secondary">({currentUser.role})</div>
-          <button onClick={handleLogout} className="w-full mt-4 flex items-center justify-center text-sm text-brand-text-secondary hover:text-brand-text-primary transition-colors p-2 rounded-lg bg-brand-background hover:bg-brand-primary-light">
+        <div className="px-4 py-4 border-t border-brand-border">
+          <button onClick={handleLogout} className="flex items-center w-full px-4 py-3 text-brand-text-secondary hover:bg-red-50 hover:text-red-600 transition-colors duration-200 rounded-lg">
             <LogoutIcon />
-            <span className="ml-2">Logout</span>
+            <span className="ml-4 font-medium">Logout</span>
           </button>
         </div>
       </aside>
 
-      <div className="flex-1 flex flex-col">
+      {/* Main content */}
+      <main className="flex-1 flex flex-col overflow-hidden">
         {/* Header for mobile */}
-        <header className="flex-shrink-0 bg-brand-surface border-b border-brand-border md:hidden">
-           <div className="p-4 flex justify-between items-center">
-             <div className="text-sm">Welcome, <span className="font-bold capitalize">{currentUser.username}</span> ({currentUser.role})</div>
-            <button onClick={handleLogout} className="flex items-center text-sm text-brand-text-secondary hover:text-brand-text-primary transition-colors p-2 -mr-2 rounded-md">
-              <LogoutIcon />
-            </button>
-           </div>
+        <header className="md:hidden flex items-center justify-between bg-brand-surface p-4 border-b border-brand-border">
+          <div className="flex flex-col">
+            <h1 className="text-xl font-bold text-brand-primary">naturals</h1>
+            <p className="text-[10px] text-brand-text-secondary tracking-widest">VOUCHER PORTAL</p>
+          </div>
+          <button onClick={handleLogout} className="p-2 text-brand-text-secondary hover:text-red-500">
+            <LogoutIcon />
+          </button>
         </header>
 
-        {/* Main Content */}
-        <main className="flex-1 overflow-y-auto pb-16 md:pb-0">
-          <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
-            {error ? <div className="text-center p-8 text-red-500 bg-red-100 rounded-lg">{error}</div> : isLoading ? <LoadingSpinner /> : renderContent()}
-          </div>
-        </main>
+        <div className="flex-1 overflow-y-auto p-4 md:p-8">
+          {isLoading ? <LoadingSpinner /> : error ? <div className="text-red-500 text-center">{error}</div> : renderContent()}
+        </div>
 
         {/* Bottom Nav for mobile */}
-        <nav className="fixed bottom-0 left-0 right-0 h-16 bg-brand-surface border-t border-brand-border shadow-lg md:hidden">
-          <div className="flex h-full">
-            {currentUser.role === 'admin' ? adminMobileNav : userMobileNav}
-          </div>
+        <nav className="md:hidden bg-brand-surface border-t border-brand-border h-20 flex items-center">
+          {currentUser.role === 'admin' ? adminMobileNav : userMobileNav}
         </nav>
-      </div>
+      </main>
     </div>
   );
 };

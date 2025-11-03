@@ -50,10 +50,10 @@ export const generateBrandedPackageInvoiceImage = async (customerPackage: Custom
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
     y = 50;
-    drawText(ctx, 'Naturals', canvasWidth / 2, y, `bold 40px sans-serif`, 'center', '#000000');
+    drawText(ctx, 'naturals', canvasWidth / 2, y, `bold 36px ${FONT_BASE}`, 'center', '#000000');
+    y += 25;
+    drawText(ctx, 'SALON | SPA | MAKEUP STUDIO', canvasWidth / 2, y, `14px ${FONT_BASE}`, 'center', '#000000');
     y += 30;
-    drawText(ctx, "India's No.1 hair and beauty salon", canvasWidth / 2, y, `16px sans-serif`, 'center', '#000000');
-    y += 35;
 
     drawText(ctx, outlet.name || '', canvasWidth / 2, y, `bold 18px ${FONT_BASE}`, 'center');
     y += 20;

@@ -72,14 +72,14 @@ export const Outlets: React.FC<OutletsProps> = ({ outlets, onAdd, onUpdate, onDe
       <div className="space-y-3">
         {outlets.length > 0 ? (
           outlets.map(outlet => (
-            <div key={outlet.id} className="bg-brand-surface border border-brand-border p-4 rounded-lg flex justify-between items-center">
-              <div>
+            <div key={outlet.id} className="bg-brand-surface border border-brand-border p-4 rounded-lg flex flex-col sm:flex-row sm:justify-between sm:items-center">
+              <div className="mb-2 sm:mb-0">
                 <p className="font-bold">{outlet.name}</p>
                 <p className="text-sm text-brand-text-secondary">{outlet.location}</p>
               </div>
-              <div className="space-x-2">
-                <button onClick={() => openModalForEdit(outlet)} className="text-yellow-500 hover:text-yellow-600">Edit</button>
-                <button onClick={() => onDelete(outlet.id)} className="text-red-500 hover:text-red-600">Delete</button>
+              <div className="space-x-2 flex-shrink-0">
+                <button onClick={() => openModalForEdit(outlet)} className="text-yellow-500 hover:text-yellow-600 font-medium py-1 px-2 rounded">Edit</button>
+                <button onClick={() => onDelete(outlet.id)} className="text-red-500 hover:text-red-600 font-medium py-1 px-2 rounded">Delete</button>
               </div>
             </div>
           ))

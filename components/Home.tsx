@@ -95,6 +95,8 @@ export const Home: React.FC<HomeProps> = ({ vouchers, packages, outlets, isAdmin
   const packagesAssignedThisMonth = packagesToDisplay.filter(p => 
     new Date(p.assignedDate) >= startOfMonth && new Date(p.assignedDate) <= endOfMonth
   ).length;
+  
+  const recentVouchers = useMemo(() => vouchersToDisplay.slice(-15).reverse(), [vouchersToDisplay]);
 
   return (
     <div className="space-y-8">
@@ -149,7 +151,7 @@ export const Home: React.FC<HomeProps> = ({ vouchers, packages, outlets, isAdmin
         
         {vouchersToDisplay.length > 0 ? (
           <div className="px-4 pb-4 space-y-3">
-            {[...vouchersToDisplay].reverse().slice(0, 15).map(voucher => (
+            {recentVouchers.map(voucher => (
               <div key={voucher.id} className="bg-brand-background p-4 rounded-lg flex flex-col sm:flex-row sm:justify-between sm:items-center">
                 <div className="mb-3 sm:mb-0">
                   <p className="font-mono text-sm text-brand-text-primary break-all">{voucher.id}</p>

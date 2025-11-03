@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { User, Outlet } from '../types';
 
 interface UsersProps {
@@ -13,6 +13,10 @@ export const Users: React.FC<UsersProps> = ({ users, outlets, onAdd, onUpdate, o
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | Omit<User, 'id'> | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  
+  const outletIdToNameMap = useMemo(() => {
+    return new Map(outlets.map(o => [o.id, o.name]));
+  }, [outlets]);
 
   const openModalForNew = () => {
     setCurrentUser({ username: '', password: '', role: 'user', outletId: '' });
@@ -64,7 +68,7 @@ export const Users: React.FC<UsersProps> = ({ users, outlets, onAdd, onUpdate, o
 
   const getOutletName = (outletId?: string) => {
     if (!outletId) return 'N/A';
-    return outlets.find(o => o.id === outletId)?.name ?? 'Unknown';
+    return outletIdToNameMap.get(outletId) ?? 'Unknown';
   };
 
   return (

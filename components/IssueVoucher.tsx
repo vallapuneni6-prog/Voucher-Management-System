@@ -1,23 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Voucher, VoucherType, Outlet } from '../types';
 import { generateBrandedVoucherImage } from './downloadBrandedVoucher';
-
-// Helper function to convert a data URI to a Blob, which is more reliable for downloads
-const dataURItoBlob = (dataURI: string): Blob | null => {
-    try {
-        const byteString = atob(dataURI.split(',')[1]);
-        const mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0];
-        const ab = new ArrayBuffer(byteString.length);
-        const ia = new Uint8Array(ab);
-        for (let i = 0; i < byteString.length; i++) {
-            ia[i] = byteString.charCodeAt(i);
-        }
-        return new Blob([ab], { type: mimeString });
-    } catch (error) {
-        console.error("Failed to convert data URI to Blob", error);
-        return null;
-    }
-};
+import { dataURItoBlob } from './utils';
 
 // FIX: Define props interface for IssueVoucher component
 interface IssueVoucherProps {
@@ -185,11 +169,12 @@ export const IssueVoucher: React.FC<IssueVoucherProps> = ({ onIssueVoucher, outl
           className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 transition-opacity duration-300"
           role="dialog"
           aria-modal="true"
+          aria-labelledby="issue-voucher-title"
         >
           <div className="bg-brand-surface border border-brand-border rounded-xl p-6 w-full max-w-md shadow-2xl">
              {!lastVoucher ? (
                 <>
-                  <h2 className="text-2xl font-bold mb-4 text-brand-text-primary">
+                  <h2 id="issue-voucher-title" className="text-2xl font-bold mb-4 text-brand-text-primary">
                     {voucherType === VoucherType.PARTNER ? 'Enter Partner Details' : 'Enter Friends Details'}
                   </h2>
                   <form onSubmit={handleSubmit} className="space-y-4">
@@ -227,7 +212,7 @@ export const IssueVoucher: React.FC<IssueVoucherProps> = ({ onIssueVoucher, outl
                 </>
              ) : (
                 <div className="text-center">
-                    <h2 className="text-2xl font-bold mb-2 text-green-600">Voucher Issued!</h2>
+                    <h2 id="issue-voucher-title" className="text-2xl font-bold mb-2 text-green-600">Voucher Issued!</h2>
                     <p className="text-brand-text-secondary mb-4">Voucher ID: <span className="font-mono text-brand-text-primary">{lastVoucher.id}</span></p>
                     <p className="text-brand-text-secondary">Recipient: <span className="font-bold text-brand-text-primary">{lastVoucher.recipientName}</span></p>
                     <div className="mt-6 space-y-3">
@@ -257,9 +242,10 @@ export const IssueVoucher: React.FC<IssueVoucherProps> = ({ onIssueVoucher, outl
           className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[60] p-4"
           role="dialog"
           aria-modal="true"
+          aria-labelledby="voucher-preview-title"
         >
             <div className="bg-brand-surface rounded-xl p-4 w-full max-w-lg max-h-[90vh] flex flex-col border border-brand-border shadow-2xl">
-                <h2 className="text-xl font-bold mb-4 flex-shrink-0 text-brand-text-primary">Voucher Preview</h2>
+                <h2 id="voucher-preview-title" className="text-xl font-bold mb-4 flex-shrink-0 text-brand-text-primary">Voucher Preview</h2>
                 <div className="overflow-y-auto flex-1 bg-gray-100 p-2 rounded-lg border border-brand-border">
                     <img src={voucherImage} alt="Generated Voucher" className="w-full h-auto" />
                 </div>

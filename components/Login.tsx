@@ -24,7 +24,11 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
   return (
     <div className="flex items-center justify-center h-screen bg-brand-background">
       <div className="w-full max-w-sm p-8 space-y-6 bg-brand-surface border border-brand-border rounded-xl shadow-sm">
-        <h1 className="text-3xl font-bold text-center text-brand-text-primary">Voucher Login</h1>
+        <div className="text-center mb-6">
+          <h1 className="text-5xl font-bold text-brand-primary">naturals</h1>
+          <p className="text-xs text-brand-text-secondary tracking-[0.2em]">SALON | SPA | MAKEUP STUDIO</p>
+        </div>
+        <h1 className="text-2xl font-bold text-center text-brand-text-primary">Voucher Portal Login</h1>
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <input

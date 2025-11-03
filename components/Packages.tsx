@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { PackageTemplate, CustomerPackage, Outlet, ServiceRecord } from '../types';
 import { generateBrandedPackageInvoiceImage } from './downloadBrandedPackage';
+import { dataURItoBlob } from './utils';
 
 interface PackagesProps {
   isAdmin: boolean;
@@ -24,23 +25,6 @@ interface PackagesProps {
   serviceRecords?: ServiceRecord[];
   outlet?: Outlet | null;
 }
-
-// Helper function to convert a data URI to a Blob, which is more reliable for downloads
-const dataURItoBlob = (dataURI: string): Blob | null => {
-    try {
-        const byteString = atob(dataURI.split(',')[1]);
-        const mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0];
-        const ab = new ArrayBuffer(byteString.length);
-        const ia = new Uint8Array(ab);
-        for (let i = 0; i < byteString.length; i++) {
-            ia[i] = byteString.charCodeAt(i);
-        }
-        return new Blob([ab], { type: mimeString });
-    } catch (error) {
-        console.error("Failed to convert data URI to Blob", error);
-        return null;
-    }
-};
 
 export const Packages: React.FC<PackagesProps> = ({ isAdmin, packageTemplates, customerPackages, allCustomerPackages, outlets, onAddTemplate, onDeleteTemplate, onAssignPackage, onRedeemFromPackage, serviceRecords, outlet }) => {
 
@@ -112,10 +96,11 @@ export const Packages: React.FC<PackagesProps> = ({ isAdmin, packageTemplates, c
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         
         y = 50;
-        drawText(ctx, 'Naturals', CANVAS_WIDTH / 2, y, `bold 40px sans-serif`, 'center');
+        drawText(ctx, 'naturals', CANVAS_WIDTH / 2, y, `bold 36px ${FONT_BASE}`, 'center', '#000000');
+        y += 25;
+        drawText(ctx, 'SALON | SPA | MAKEUP STUDIO', CANVAS_WIDTH / 2, y, `14px ${FONT_BASE}`, 'center', '#000000');
         y += 30;
-        drawText(ctx, "India's No.1 hair and beauty salon", CANVAS_WIDTH / 2, y, `16px sans-serif`, 'center');
-        y += 35;
+
         drawText(ctx, packageOutlet.name, CANVAS_WIDTH / 2, y, `bold 18px ${FONT_BASE}`, 'center');
         y += 20;
         y = drawMultiLineText(ctx, packageOutlet.address, CANVAS_WIDTH / 2, y, `14px ${FONT_BASE}`, 18, 'center');
@@ -248,9 +233,9 @@ export const Packages: React.FC<PackagesProps> = ({ isAdmin, packageTemplates, c
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <h1 className="text-3xl font-bold text-brand-text-primary">Manage Packages</h1>
-                <button onClick={() => setIsModalOpen(true)} className="bg-brand-primary text-white font-semibold py-2 px-4 rounded-lg shadow-sm hover:opacity-90 transition-colors">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center">
+                <h1 className="text-3xl font-bold text-brand-text-primary text-center sm:text-left mb-4 sm:mb-0">Manage Packages</h1>
+                <button onClick={() => setIsModalOpen(true)} className="bg-brand-primary text-white font-semibold py-2 px-4 rounded-lg shadow-sm hover:opacity-90 transition-colors w-full sm:w-auto">
                     New Package Template
                 </button>
             </div>
@@ -258,12 +243,12 @@ export const Packages: React.FC<PackagesProps> = ({ isAdmin, packageTemplates, c
                 <h2 className="text-xl font-semibold">Available Templates</h2>
                 {packageTemplates.length > 0 ? (
                   packageTemplates.map(template => (
-                    <div key={template.id} className="bg-brand-surface border border-brand-border p-4 rounded-lg flex justify-between items-center">
-                      <div>
+                    <div key={template.id} className="bg-brand-surface border border-brand-border p-4 rounded-lg flex flex-col sm:flex-row sm:justify-between sm:items-center">
+                      <div className="mb-2 sm:mb-0">
                         <p className="font-bold">{template.name}</p>
                         <p className="text-sm text-brand-text-secondary">Pay: {template.packageValue}, Services: {template.serviceValue}</p>
                       </div>
-                      <button onClick={() => onDeleteTemplate && onDeleteTemplate(template.id)} className="text-red-500 hover:text-red-600">Delete</button>
+                      <button onClick={() => onDeleteTemplate && onDeleteTemplate(template.id)} className="text-red-500 hover:text-red-600 self-end sm:self-center font-medium">Delete</button>
                     </div>
                   ))
                 ) : (
@@ -272,9 +257,11 @@ export const Packages: React.FC<PackagesProps> = ({ isAdmin, packageTemplates, c
             </div>
 
             {isModalOpen && (
-                <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
+                <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4"
+                  role="dialog" aria-modal="true" aria-labelledby="create-template-title"
+                >
                     <div className="bg-brand-surface rounded-xl p-6 w-full max-w-sm border border-brand-border">
-                        <h2 className="text-2xl font-bold mb-4">Create Package Template</h2>
+                        <h2 id="create-template-title" className="text-2xl font-bold mb-4">Create Package Template</h2>
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <input type="number" placeholder="Package Value (Pay)" value={packageValue} onChange={e => setPackageValue(e.target.value)} required className="w-full bg-brand-surface text-brand-text-primary p-3 rounded-lg border border-brand-border" />
                             <input type="number" placeholder="Service Value (Get)" value={serviceValue} onChange={e => setServiceValue(e.target.value)} required className="w-full bg-brand-surface text-brand-text-primary p-3 rounded-lg border border-brand-border" />
@@ -509,11 +496,13 @@ export const Packages: React.FC<PackagesProps> = ({ isAdmin, packageTemplates, c
         }, [groupedTransactions]);
 
         return (
-            <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
+            <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4"
+              role="dialog" aria-modal="true" aria-labelledby="history-title"
+            >
                 <div className="bg-brand-surface rounded-xl p-6 w-full max-w-lg border border-brand-border max-h-[80vh] flex flex-col">
                     <div className="flex justify-between items-center mb-4 flex-shrink-0">
-                        <h2 className="text-2xl font-bold">Transaction History</h2>
-                        <button onClick={onClose} className="text-gray-400 hover:text-gray-600">&times;</button>
+                        <h2 id="history-title" className="text-2xl font-bold">Transaction History</h2>
+                        <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-3xl font-bold">&times;</button>
                     </div>
                     <div className="overflow-y-auto flex-1 pr-2">
                         <div className="space-y-6">
@@ -589,10 +578,10 @@ export const Packages: React.FC<PackagesProps> = ({ isAdmin, packageTemplates, c
                        <div className="pt-2">
                          <h3 className="font-semibold text-brand-text-secondary">Initial Services (Optional)</h3>
                          {initialServices.map((s, i) => (
-                             <div key={i} className="flex gap-2 my-2">
-                                 <input type="text" placeholder="Service Name" value={s.name} onChange={e => handleInitialServiceChange(i, 'name', e.target.value)} className="w-2/3 bg-brand-surface text-brand-text-primary p-2 rounded-lg border border-brand-border" />
-                                 <input type="number" placeholder="Value" value={s.value} onChange={e => handleInitialServiceChange(i, 'value', e.target.value)} className="w-1/3 bg-brand-surface text-brand-text-primary p-2 rounded-lg border border-brand-border" />
-                                 <button type="button" onClick={() => handleRemoveInitialService(i)} className="text-red-500 p-1 rounded-full hover:bg-red-100">&times;</button>
+                             <div key={i} className="flex flex-col sm:flex-row gap-2 my-2 items-center">
+                                 <input type="text" placeholder="Service Name" value={s.name} onChange={e => handleInitialServiceChange(i, 'name', e.target.value)} className="w-full sm:w-2/3 bg-brand-surface text-brand-text-primary p-2 rounded-lg border border-brand-border" />
+                                 <input type="number" placeholder="Value" value={s.value} onChange={e => handleInitialServiceChange(i, 'value', e.target.value)} className="w-full sm:w-1/3 bg-brand-surface text-brand-text-primary p-2 rounded-lg border border-brand-border" />
+                                 <button type="button" onClick={() => handleRemoveInitialService(i)} className="text-red-500 p-1 rounded-full hover:bg-red-100 font-bold text-2xl flex-shrink-0">&times;</button>
                              </div>
                          ))}
                          <button type="button" onClick={handleAddInitialService} className="text-sm text-brand-primary hover:underline">+ Add Service</button>
@@ -638,10 +627,10 @@ export const Packages: React.FC<PackagesProps> = ({ isAdmin, packageTemplates, c
                                 <div className="pt-2">
                                     <h3 className="font-semibold text-brand-text-secondary">Services to Redeem</h3>
                                     {servicesToRedeem.map((s, i) => (
-                                        <div key={i} className="flex gap-2 my-2">
-                                            <input type="text" placeholder="Service Name" value={s.name} onChange={e => handleServiceToRedeemChange(i, 'name', e.target.value)} className="w-2/3 bg-brand-surface text-brand-text-primary p-2 rounded-lg border border-brand-border" />
-                                            <input type="number" placeholder="Value" value={s.value} onChange={e => handleServiceToRedeemChange(i, 'value', e.target.value)} className="w-1/3 bg-brand-surface text-brand-text-primary p-2 rounded-lg border border-brand-border" />
-                                            <button type="button" onClick={() => handleRemoveServiceToRedeem(i)} className="text-red-500 p-1 rounded-full hover:bg-red-100">&times;</button>
+                                        <div key={i} className="flex flex-col sm:flex-row gap-2 my-2 items-center">
+                                            <input type="text" placeholder="Service Name" value={s.name} onChange={e => handleServiceToRedeemChange(i, 'name', e.target.value)} className="w-full sm:w-2/3 bg-brand-surface text-brand-text-primary p-2 rounded-lg border border-brand-border" />
+                                            <input type="number" placeholder="Value" value={s.value} onChange={e => handleServiceToRedeemChange(i, 'value', e.target.value)} className="w-full sm:w-1/3 bg-brand-surface text-brand-text-primary p-2 rounded-lg border border-brand-border" />
+                                            <button type="button" onClick={() => handleRemoveServiceToRedeem(i)} className="text-red-500 p-1 rounded-full hover:bg-red-100 font-bold text-2xl flex-shrink-0">&times;</button>
                                         </div>
                                     ))}
                                     <button type="button" onClick={handleAddServiceToRedeem} className="text-sm text-brand-primary hover:underline">+ Add Service</button>
@@ -697,9 +686,10 @@ export const Packages: React.FC<PackagesProps> = ({ isAdmin, packageTemplates, c
           className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[60] p-4"
           role="dialog"
           aria-modal="true"
+          aria-labelledby="invoice-preview-title"
         >
             <div className="bg-brand-surface rounded-xl p-4 w-full max-w-lg max-h-[90vh] flex flex-col border border-brand-border shadow-2xl">
-                <h2 className="text-xl font-bold mb-4 flex-shrink-0 text-brand-text-primary">Invoice Preview</h2>
+                <h2 id="invoice-preview-title" className="text-xl font-bold mb-4 flex-shrink-0 text-brand-text-primary">Invoice Preview</h2>
                 <div className="overflow-y-auto flex-1 bg-gray-100 p-2 rounded-lg border border-brand-border">
                     <img src={invoiceImage} alt="Generated Invoice/Bill" className="w-full h-auto" />
                 </div>
