@@ -1,21 +1,28 @@
-import { User, Voucher, VoucherStatus, Outlet, PackageTemplate, CustomerPackage, ServiceRecord } from './types';
+import { User, Voucher, Outlet, PackageTemplate, CustomerPackage, ServiceRecord } from './types';
 import { SEED_USERS, SEED_PACKAGE_TEMPLATES, SEED_CUSTOMER_PACKAGES, SEED_SERVICE_RECORDS } from './seedData';
 
 // The base URL of the backend API you deployed on BigRock
-// It should point to the .php files.
+// This should point to the /api folder inside public_html
 const API_BASE_URL = '/api'; // Use a relative path as it's served from the same domain
 
-// Helper function for handling API responses
+// Helper function for handling API responses from the PHP backend
 const handleResponse = async (response: Response) => {
+  // For 204 No Content, we don't need to parse JSON
+  if (response.status === 204) {
+    return;
+  }
+
   if (!response.ok) {
     const errorText = await response.text();
     let errorMessage = `HTTP error! status: ${response.status}`;
     try {
+        // Try to parse as JSON first
         const errorData = JSON.parse(errorText);
         errorMessage = errorData.message || errorMessage;
     } catch (e) {
-        // If parsing fails, use the raw text. It might be a PHP error message.
-        errorMessage = errorText || errorMessage;
+        // If parsing fails, it might be a direct PHP error message string
+        // Strip HTML tags that might come from PHP error reporting
+        errorMessage = errorText.replace(/<[^>]*>?/gm, '').trim() || errorMessage;
     }
     throw new Error(errorMessage);
   }
@@ -23,9 +30,8 @@ const handleResponse = async (response: Response) => {
 };
 
 export const login = async (username: string, password: string): Promise<User | null> => {
-  // This would be a POST request in a real app.
-  // For now, we are leaving the auth logic as-is since the backend doesn't have it yet.
-  // A real implementation would look like:
+  // IMPORTANT: This is still a mock login.
+  // You will need to create a `login.php` endpoint that securely checks credentials.
   /*
   const response = await fetch(`${API_BASE_URL}/login.php`, {
     method: 'POST',
@@ -34,7 +40,7 @@ export const login = async (username: string, password: string): Promise<User | 
   });
   return handleResponse(response);
   */
-  // Keeping mock login for now until login endpoint is created on backend
+  console.warn("Using mock login. Please implement a secure backend login endpoint.");
   const users: User[] = SEED_USERS;
   const user = users.find(u => u.username === username && u.password === password);
   if (user) {
@@ -49,130 +55,120 @@ export const getVouchers = (): Promise<Voucher[]> => {
 };
 
 export const addVoucher = (newVoucherData: Omit<Voucher, 'id'>, outletCode: string): Promise<Voucher> => {
-  // This endpoint would need to be created in PHP.
-  // The PHP script would handle $_POST data.
-  // For now, this will fail until vouchers.php is updated to handle POST requests.
+  // The PHP script should handle POST data.
   return fetch(`${API_BASE_URL}/vouchers.php`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ...newVoucherData, outletCode }),
+    body: JSON.stringify({ action: 'create', ...newVoucherData, outletCode }),
   }).then(handleResponse);
 };
 
-export const redeemVoucher = (voucherId: string, redemptionBillNo: string): Promise<Voucher | null> => {
-  // This endpoint would need to be created in PHP.
-  // The PHP script would handle PUT (or POST) data.
-  return fetch(`${API_BASE_URL}/vouchers.php?action=redeem&id=${voucherId}`, {
-    method: 'POST', // HTML forms don't support PUT, so POST is often used.
+export const redeemVoucher = (voucherId: string, redemptionBillNo: string): Promise<Voucher> => {
+  return fetch(`${API_BASE_URL}/vouchers.php`, {
+    method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ redemptionBillNo }),
+    body: JSON.stringify({ action: 'redeem', id: voucherId, redemptionBillNo }),
   }).then(handleResponse);
 };
 
-// --- CRUD operations need corresponding backend endpoints ---
+// --- User CRUD ---
 
 export const getUsers = (): Promise<User[]> => {
-  // return fetch(`${API_BASE_URL}/users.php`).then(handleResponse);
-  // MOCKED until users.php is built
-   const users: User[] = SEED_USERS;
-   return Promise.resolve(users.map(u => {
-       const { password, ...user } = u;
-       return user;
-   }));
+  return fetch(`${API_BASE_URL}/users.php`).then(handleResponse);
 };
 
 export const addUser = (userData: Omit<User, 'id'>): Promise<User> => {
   return fetch(`${API_BASE_URL}/users.php`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(userData),
+    body: JSON.stringify({ action: 'create', ...userData }),
   }).then(handleResponse);
 };
 
 export const updateUser = (updatedUserData: User): Promise<User> => {
-  return fetch(`${API_BASE_URL}/users.php?id=${updatedUserData.id}`, {
-    method: 'POST', // Using POST to simulate PUT
+  return fetch(`${API_BASE_URL}/users.php`, {
+    method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(updatedUserData),
+    body: JSON.stringify({ action: 'update', ...updatedUserData }),
   }).then(handleResponse);
 };
 
+// FIX: Corrected incomplete fetch call and implemented missing API functions.
 export const deleteUser = (userId: string): Promise<void> => {
-  return fetch(`${API_BASE_URL}/users.php?id=${userId}`, { method: 'DELETE' }).then(res => {
-    if (!res.ok) throw new Error('Failed to delete user');
-  });
+  return fetch(`${API_BASE_URL}/users.php`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'delete', id: userId }),
+  }).then(handleResponse);
 };
 
+// --- Outlet CRUD ---
 export const getOutlets = (): Promise<Outlet[]> => {
-  // return fetch(`${API_BASE_URL}/outlets.php`).then(handleResponse);
-  // MOCKED until outlets.php is built
-  return Promise.resolve([
-      { id: 'o-1672532400000', name: 'MADINAGUDA', location: 'Hyderabad', code: 'NAT', address: '123 Main St', gstin: 'ABCDE12345', phone: '9876543210' }
-  ]);
+  return fetch(`${API_BASE_URL}/outlets.php`).then(handleResponse);
 };
 
 export const addOutlet = (outletData: Omit<Outlet, 'id'>): Promise<Outlet> => {
   return fetch(`${API_BASE_URL}/outlets.php`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(outletData),
+    body: JSON.stringify({ action: 'create', ...outletData }),
   }).then(handleResponse);
 };
 
 export const updateOutlet = (updatedOutletData: Outlet): Promise<Outlet> => {
-  return fetch(`${API_BASE_URL}/outlets.php?id=${updatedOutletData.id}`, {
-    method: 'POST', // Using POST to simulate PUT
+  return fetch(`${API_BASE_URL}/outlets.php`, {
+    method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(updatedOutletData),
+    body: JSON.stringify({ action: 'update', ...updatedOutletData }),
   }).then(handleResponse);
 };
 
 export const deleteOutlet = (outletId: string): Promise<void> => {
-  return fetch(`${API_BASE_URL}/outlets.php?id=${outletId}`, { method: 'DELETE' }).then(res => {
-      if (!res.ok) throw new Error('Failed to delete outlet');
-  });
+  return fetch(`${API_BASE_URL}/outlets.php`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'delete', id: outletId }),
+  }).then(handleResponse);
 };
 
-
-// --- Package Management API ---
-// These would also be converted to fetch calls once backend endpoints exist.
-// For now, they will remain as mock promises to keep the UI functional.
-
-const MOCK_API_LATENCY = 100;
-
+// --- Package and Service CRUD ---
 export const getPackageTemplates = (): Promise<PackageTemplate[]> => {
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            resolve(SEED_PACKAGE_TEMPLATES);
-        }, MOCK_API_LATENCY);
-    });
+  return fetch(`${API_BASE_URL}/packages.php?type=templates`).then(handleResponse);
 };
 
 export const addPackageTemplate = (templateData: Omit<PackageTemplate, 'id'>): Promise<PackageTemplate> => {
-    return Promise.reject(new Error("Add package template not implemented in API yet"));
+  return fetch(`${API_BASE_URL}/packages.php`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'create_template', ...templateData }),
+  }).then(handleResponse);
 };
 
 export const deletePackageTemplate = (templateId: string): Promise<void> => {
-    return Promise.reject(new Error("Delete package template not implemented in API yet"));
+  return fetch(`${API_BASE_URL}/packages.php`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'delete_template', id: templateId }),
+  }).then(handleResponse);
 };
 
 export const getCustomerPackages = (): Promise<CustomerPackage[]> => {
-    return new Promise((resolve) => {
-       setTimeout(() => resolve(SEED_CUSTOMER_PACKAGES), MOCK_API_LATENCY);
-    });
-};
-
-export const getServiceRecords = (): Promise<ServiceRecord[]> => {
-    return new Promise((resolve) => {
-       setTimeout(() => resolve(SEED_SERVICE_RECORDS), MOCK_API_LATENCY);
-    });
+  return fetch(`${API_BASE_URL}/packages.php?type=customer_packages`).then(handleResponse);
 };
 
 export const assignCustomerPackage = (
-    assignmentData: Omit<CustomerPackage, 'id' | 'remainingServiceValue'>,
-    initialServices: Omit<ServiceRecord, 'id' | 'customerPackageId' | 'redeemedDate' | 'transactionId'>[]
+  assignmentData: Omit<CustomerPackage, 'id' | 'remainingServiceValue'>, 
+  initialServices: Omit<ServiceRecord, 'id' | 'customerPackageId' | 'redeemedDate' | 'transactionId'>[]
 ): Promise<{ newPackage: CustomerPackage, newRecords: ServiceRecord[] }> => {
-    return Promise.reject(new Error("Assign package not implemented in API yet"));
+  return fetch(`${API_BASE_URL}/packages.php`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'assign_package', packageData: assignmentData, servicesData: initialServices }),
+  }).then(handleResponse);
+};
+
+export const getServiceRecords = (): Promise<ServiceRecord[]> => {
+  return fetch(`${API_BASE_URL}/packages.php?type=service_records`).then(handleResponse);
 };
 
 export const redeemServicesFromPackage = (
@@ -180,5 +176,14 @@ export const redeemServicesFromPackage = (
     servicesToRedeem: Omit<ServiceRecord, 'id' | 'customerPackageId' | 'redeemedDate' | 'transactionId'>[],
     redeemDate: Date
 ): Promise<{ updatedPackage: CustomerPackage, newRecords: ServiceRecord[] }> => {
-     return Promise.reject(new Error("Redeem service not implemented in API yet"));
+    return fetch(`${API_BASE_URL}/packages.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            action: 'redeem_services', 
+            packageId: customerPackageId, 
+            servicesData: servicesToRedeem,
+            redeemDate: redeemDate.toISOString() 
+        }),
+    }).then(handleResponse);
 };
