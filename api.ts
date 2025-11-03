@@ -1,220 +1,170 @@
 import { User, Voucher, VoucherStatus, Outlet, PackageTemplate, CustomerPackage, ServiceRecord } from './types';
-import { SEED_OUTLETS, SEED_USERS, SEED_VOUCHERS, SEED_PACKAGE_TEMPLATES, SEED_CUSTOMER_PACKAGES, SEED_SERVICE_RECORDS } from './seedData';
+import { SEED_USERS, SEED_PACKAGE_TEMPLATES, SEED_CUSTOMER_PACKAGES, SEED_SERVICE_RECORDS } from './seedData';
 
-const MOCK_API_LATENCY = 500;
+// The base URL of the backend API you deployed on BigRock
+// It should point to the .php files.
+const API_BASE_URL = '/api'; // Use a relative path as it's served from the same domain
 
-const getFromStorage = (key: string, seedData: any[]) => {
-  try {
-    const stored = localStorage.getItem(key);
-    if (stored) {
-      return JSON.parse(stored);
-    } else {
-      localStorage.setItem(key, JSON.stringify(seedData));
-      return seedData;
+// Helper function for handling API responses
+const handleResponse = async (response: Response) => {
+  if (!response.ok) {
+    const errorText = await response.text();
+    let errorMessage = `HTTP error! status: ${response.status}`;
+    try {
+        const errorData = JSON.parse(errorText);
+        errorMessage = errorData.message || errorMessage;
+    } catch (e) {
+        // If parsing fails, use the raw text. It might be a PHP error message.
+        errorMessage = errorText || errorMessage;
     }
-  } catch (error) {
-    console.error(`Error with localStorage for key "${key}":`, error);
-    return seedData;
+    throw new Error(errorMessage);
   }
+  return response.json();
 };
 
-export const login = (username: string, password: string): Promise<User | null> => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const users: User[] = getFromStorage('users', SEED_USERS);
-      const user = users.find(u => u.username === username && u.password === password);
-      resolve(user || null);
-    }, MOCK_API_LATENCY);
+export const login = async (username: string, password: string): Promise<User | null> => {
+  // This would be a POST request in a real app.
+  // For now, we are leaving the auth logic as-is since the backend doesn't have it yet.
+  // A real implementation would look like:
+  /*
+  const response = await fetch(`${API_BASE_URL}/login.php`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password }),
   });
+  return handleResponse(response);
+  */
+  // Keeping mock login for now until login endpoint is created on backend
+  const users: User[] = SEED_USERS;
+  const user = users.find(u => u.username === username && u.password === password);
+  if (user) {
+      const { password, ...userWithoutPassword } = user;
+      return userWithoutPassword;
+  }
+  return null;
 };
 
 export const getVouchers = (): Promise<Voucher[]> => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const vouchers = getFromStorage('vouchers', SEED_VOUCHERS);
-      resolve(vouchers);
-    }, MOCK_API_LATENCY);
-  });
+  return fetch(`${API_BASE_URL}/vouchers.php`).then(handleResponse);
 };
 
 export const addVoucher = (newVoucherData: Omit<Voucher, 'id'>, outletCode: string): Promise<Voucher> => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const vouchers: Voucher[] = getFromStorage('vouchers', SEED_VOUCHERS);
-      const newVoucher: Voucher = {
-        ...newVoucherData,
-        id: `NAT-${outletCode}-${Math.random().toString(36).substr(2, 3).toUpperCase()}`,
-      };
-      const updatedVouchers = [...vouchers, newVoucher];
-      localStorage.setItem('vouchers', JSON.stringify(updatedVouchers));
-      resolve(newVoucher);
-    }, MOCK_API_LATENCY);
-  });
+  // This endpoint would need to be created in PHP.
+  // The PHP script would handle $_POST data.
+  // For now, this will fail until vouchers.php is updated to handle POST requests.
+  return fetch(`${API_BASE_URL}/vouchers.php`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...newVoucherData, outletCode }),
+  }).then(handleResponse);
 };
 
 export const redeemVoucher = (voucherId: string, redemptionBillNo: string): Promise<Voucher | null> => {
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            const vouchers: Voucher[] = getFromStorage('vouchers', SEED_VOUCHERS);
-            let redeemedVoucher: Voucher | null = null;
-            const updatedVouchers = vouchers.map(v => {
-                if (v.id === voucherId && v.status === VoucherStatus.ISSUED) {
-                    redeemedVoucher = { 
-                        ...v, 
-                        status: VoucherStatus.REDEEMED, 
-                        redeemedDate: new Date(),
-                        redemptionBillNo: redemptionBillNo,
-                    };
-                    return redeemedVoucher;
-                }
-                return v;
-            });
-
-            if (redeemedVoucher) {
-                localStorage.setItem('vouchers', JSON.stringify(updatedVouchers));
-            }
-            resolve(redeemedVoucher);
-        }, MOCK_API_LATENCY);
-    });
+  // This endpoint would need to be created in PHP.
+  // The PHP script would handle PUT (or POST) data.
+  return fetch(`${API_BASE_URL}/vouchers.php?action=redeem&id=${voucherId}`, {
+    method: 'POST', // HTML forms don't support PUT, so POST is often used.
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ redemptionBillNo }),
+  }).then(handleResponse);
 };
 
+// --- CRUD operations need corresponding backend endpoints ---
+
 export const getUsers = (): Promise<User[]> => {
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            resolve(getFromStorage('users', SEED_USERS));
-        }, MOCK_API_LATENCY);
-    });
+  // return fetch(`${API_BASE_URL}/users.php`).then(handleResponse);
+  // MOCKED until users.php is built
+   const users: User[] = SEED_USERS;
+   return Promise.resolve(users.map(u => {
+       const { password, ...user } = u;
+       return user;
+   }));
 };
 
 export const addUser = (userData: Omit<User, 'id'>): Promise<User> => {
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            const users: User[] = getFromStorage('users', SEED_USERS);
-            const newUser: User = { ...userData, id: `u-${Date.now()}` };
-            const updatedUsers = [...users, newUser];
-            localStorage.setItem('users', JSON.stringify(updatedUsers));
-            resolve(newUser);
-        }, MOCK_API_LATENCY);
-    });
+  return fetch(`${API_BASE_URL}/users.php`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(userData),
+  }).then(handleResponse);
 };
 
 export const updateUser = (updatedUserData: User): Promise<User> => {
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            const users: User[] = getFromStorage('users', SEED_USERS);
-            const updatedUsers = users.map(u => u.id === updatedUserData.id ? updatedUserData : u);
-            localStorage.setItem('users', JSON.stringify(updatedUsers));
-            resolve(updatedUserData);
-        }, MOCK_API_LATENCY);
-    });
+  return fetch(`${API_BASE_URL}/users.php?id=${updatedUserData.id}`, {
+    method: 'POST', // Using POST to simulate PUT
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(updatedUserData),
+  }).then(handleResponse);
 };
 
 export const deleteUser = (userId: string): Promise<void> => {
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            const users: User[] = getFromStorage('users', SEED_USERS);
-            const updatedUsers = users.filter(u => u.id !== userId);
-            localStorage.setItem('users', JSON.stringify(updatedUsers));
-            resolve();
-        }, MOCK_API_LATENCY);
-    });
+  return fetch(`${API_BASE_URL}/users.php?id=${userId}`, { method: 'DELETE' }).then(res => {
+    if (!res.ok) throw new Error('Failed to delete user');
+  });
 };
 
 export const getOutlets = (): Promise<Outlet[]> => {
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            resolve(getFromStorage('outlets', SEED_OUTLETS));
-        }, MOCK_API_LATENCY);
-    });
+  // return fetch(`${API_BASE_URL}/outlets.php`).then(handleResponse);
+  // MOCKED until outlets.php is built
+  return Promise.resolve([
+      { id: 'o-1672532400000', name: 'MADINAGUDA', location: 'Hyderabad', code: 'NAT', address: '123 Main St', gstin: 'ABCDE12345', phone: '9876543210' }
+  ]);
 };
 
 export const addOutlet = (outletData: Omit<Outlet, 'id'>): Promise<Outlet> => {
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            const outlets: Outlet[] = getFromStorage('outlets', SEED_OUTLETS);
-            const newOutlet: Outlet = { ...outletData, id: `o-${Date.now()}` };
-            const updatedOutlets = [...outlets, newOutlet];
-            localStorage.setItem('outlets', JSON.stringify(updatedOutlets));
-            resolve(newOutlet);
-        }, MOCK_API_LATENCY);
-    });
+  return fetch(`${API_BASE_URL}/outlets.php`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(outletData),
+  }).then(handleResponse);
 };
 
 export const updateOutlet = (updatedOutletData: Outlet): Promise<Outlet> => {
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            const outlets: Outlet[] = getFromStorage('outlets', SEED_OUTLETS);
-            const updatedOutlets = outlets.map(o => o.id === updatedOutletData.id ? updatedOutletData : o);
-            localStorage.setItem('outlets', JSON.stringify(updatedOutlets));
-            resolve(updatedOutletData);
-        }, MOCK_API_LATENCY);
-    });
+  return fetch(`${API_BASE_URL}/outlets.php?id=${updatedOutletData.id}`, {
+    method: 'POST', // Using POST to simulate PUT
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(updatedOutletData),
+  }).then(handleResponse);
 };
 
 export const deleteOutlet = (outletId: string): Promise<void> => {
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            // Remove outletId from any user assigned to this outlet
-            const users: User[] = getFromStorage('users', SEED_USERS);
-            const updatedUsers = users.map(u => u.outletId === outletId ? {...u, outletId: undefined} : u);
-            localStorage.setItem('users', JSON.stringify(updatedUsers));
-
-            const outlets: Outlet[] = getFromStorage('outlets', SEED_OUTLETS);
-            const updatedOutlets = outlets.filter(o => o.id !== outletId);
-            localStorage.setItem('outlets', JSON.stringify(updatedOutlets));
-            resolve();
-        }, MOCK_API_LATENCY);
-    });
+  return fetch(`${API_BASE_URL}/outlets.php?id=${outletId}`, { method: 'DELETE' }).then(res => {
+      if (!res.ok) throw new Error('Failed to delete outlet');
+  });
 };
 
-// --- New Package Management API ---
+
+// --- Package Management API ---
+// These would also be converted to fetch calls once backend endpoints exist.
+// For now, they will remain as mock promises to keep the UI functional.
+
+const MOCK_API_LATENCY = 100;
 
 export const getPackageTemplates = (): Promise<PackageTemplate[]> => {
     return new Promise((resolve) => {
         setTimeout(() => {
-            resolve(getFromStorage('packageTemplates', SEED_PACKAGE_TEMPLATES));
+            resolve(SEED_PACKAGE_TEMPLATES);
         }, MOCK_API_LATENCY);
     });
 };
 
 export const addPackageTemplate = (templateData: Omit<PackageTemplate, 'id'>): Promise<PackageTemplate> => {
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            const templates: PackageTemplate[] = getFromStorage('packageTemplates', SEED_PACKAGE_TEMPLATES);
-            const newTemplate: PackageTemplate = { ...templateData, id: `pt-${Date.now()}` };
-            const updated = [...templates, newTemplate];
-            localStorage.setItem('packageTemplates', JSON.stringify(updated));
-            resolve(newTemplate);
-        }, MOCK_API_LATENCY);
-    });
+    return Promise.reject(new Error("Add package template not implemented in API yet"));
 };
 
 export const deletePackageTemplate = (templateId: string): Promise<void> => {
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            const templates: PackageTemplate[] = getFromStorage('packageTemplates', SEED_PACKAGE_TEMPLATES);
-            const updated = templates.filter(t => t.id !== templateId);
-            localStorage.setItem('packageTemplates', JSON.stringify(updated));
-            resolve();
-        }, MOCK_API_LATENCY);
-    });
+    return Promise.reject(new Error("Delete package template not implemented in API yet"));
 };
 
 export const getCustomerPackages = (): Promise<CustomerPackage[]> => {
     return new Promise((resolve) => {
-        setTimeout(() => {
-            const packages = getFromStorage('customerPackages', SEED_CUSTOMER_PACKAGES);
-            resolve(packages);
-        }, MOCK_API_LATENCY);
+       setTimeout(() => resolve(SEED_CUSTOMER_PACKAGES), MOCK_API_LATENCY);
     });
 };
 
 export const getServiceRecords = (): Promise<ServiceRecord[]> => {
     return new Promise((resolve) => {
-        setTimeout(() => {
-            const records = getFromStorage('serviceRecords', SEED_SERVICE_RECORDS);
-            resolve(records);
-        }, MOCK_API_LATENCY);
+       setTimeout(() => resolve(SEED_SERVICE_RECORDS), MOCK_API_LATENCY);
     });
 };
 
@@ -222,51 +172,7 @@ export const assignCustomerPackage = (
     assignmentData: Omit<CustomerPackage, 'id' | 'remainingServiceValue'>,
     initialServices: Omit<ServiceRecord, 'id' | 'customerPackageId' | 'redeemedDate' | 'transactionId'>[]
 ): Promise<{ newPackage: CustomerPackage, newRecords: ServiceRecord[] }> => {
-    return new Promise((resolve, reject) => {
-        setTimeout(() => {
-            const packages: CustomerPackage[] = getFromStorage('customerPackages', SEED_CUSTOMER_PACKAGES);
-            const templates: PackageTemplate[] = getFromStorage('packageTemplates', SEED_PACKAGE_TEMPLATES);
-            const serviceRecords: ServiceRecord[] = getFromStorage('serviceRecords', SEED_SERVICE_RECORDS);
-
-            const template = templates.find(t => t.id === assignmentData.packageTemplateId);
-            if (!template) {
-                return reject(new Error("Package template not found"));
-            }
-
-            const totalInitialServiceValue = initialServices.reduce((sum, service) => sum + service.serviceValue, 0);
-            
-            if (totalInitialServiceValue > template.serviceValue) {
-                return reject(new Error("Initial services value cannot exceed total package service value."));
-            }
-            
-            const remainingServiceValue = template.serviceValue - totalInitialServiceValue;
-
-            const newPackageId = `cp-${Date.now()}`;
-            const newPackage: CustomerPackage = { 
-                ...assignmentData, 
-                id: newPackageId,
-                remainingServiceValue
-            };
-            
-            const transactionId = `txn-${Date.now()}`;
-            const newRecords: ServiceRecord[] = initialServices.map(service => ({
-                id: `sr-${Date.now()}-${Math.random()}`,
-                customerPackageId: newPackageId,
-                serviceName: service.serviceName,
-                serviceValue: service.serviceValue,
-                redeemedDate: assignmentData.assignedDate,
-                transactionId: transactionId,
-            }));
-
-            const updatedPackages = [...packages, newPackage];
-            const updatedRecords = [...serviceRecords, ...newRecords];
-            
-            localStorage.setItem('customerPackages', JSON.stringify(updatedPackages));
-            localStorage.setItem('serviceRecords', JSON.stringify(updatedRecords));
-
-            resolve({ newPackage, newRecords });
-        }, MOCK_API_LATENCY);
-    });
+    return Promise.reject(new Error("Assign package not implemented in API yet"));
 };
 
 export const redeemServicesFromPackage = (
@@ -274,46 +180,5 @@ export const redeemServicesFromPackage = (
     servicesToRedeem: Omit<ServiceRecord, 'id' | 'customerPackageId' | 'redeemedDate' | 'transactionId'>[],
     redeemDate: Date
 ): Promise<{ updatedPackage: CustomerPackage, newRecords: ServiceRecord[] }> => {
-    return new Promise((resolve, reject) => {
-        setTimeout(() => {
-            const packages: CustomerPackage[] = getFromStorage('customerPackages', SEED_CUSTOMER_PACKAGES);
-            const serviceRecords: ServiceRecord[] = getFromStorage('serviceRecords', SEED_SERVICE_RECORDS);
-
-            const packageIndex = packages.findIndex(p => p.id === customerPackageId);
-            if (packageIndex === -1) {
-                return reject(new Error("Customer package not found."));
-            }
-
-            const customerPackage = packages[packageIndex];
-            const totalRedemptionValue = servicesToRedeem.reduce((sum, service) => sum + service.serviceValue, 0);
-
-            if (totalRedemptionValue > customerPackage.remainingServiceValue) {
-                return reject(new Error("Redemption value exceeds remaining balance."));
-            }
-
-            const updatedPackage: CustomerPackage = {
-                ...customerPackage,
-                remainingServiceValue: customerPackage.remainingServiceValue - totalRedemptionValue
-            };
-            
-            const transactionId = `txn-${Date.now()}`;
-            const newRecords: ServiceRecord[] = servicesToRedeem.map(service => ({
-                id: `sr-${Date.now()}-${Math.random()}`,
-                customerPackageId: customerPackageId,
-                serviceName: service.serviceName,
-                serviceValue: service.serviceValue,
-                redeemedDate: redeemDate,
-                transactionId: transactionId,
-            }));
-            
-            const updatedPackages = [...packages];
-            updatedPackages[packageIndex] = updatedPackage;
-            const updatedRecords = [...serviceRecords, ...newRecords];
-
-            localStorage.setItem('customerPackages', JSON.stringify(updatedPackages));
-            localStorage.setItem('serviceRecords', JSON.stringify(updatedRecords));
-
-            resolve({ updatedPackage, newRecords });
-        }, MOCK_API_LATENCY);
-    });
+     return Promise.reject(new Error("Redeem service not implemented in API yet"));
 };

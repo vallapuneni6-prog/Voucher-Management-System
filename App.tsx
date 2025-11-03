@@ -79,29 +79,6 @@ const App: React.FC = () => {
     }
   }, [currentUser]);
 
-  const updateVoucherStatus = useCallback(() => {
-    const now = new Date();
-    setVouchers(currentVouchers => {
-      const needsUpdate = currentVouchers.some(v => v.status === VoucherStatus.ISSUED && v.expiryDate < now);
-      if (needsUpdate) {
-          const updated = currentVouchers.map(v => 
-            (v.status === VoucherStatus.ISSUED && v.expiryDate < now)
-              ? { ...v, status: VoucherStatus.EXPIRED }
-              : v
-          );
-          localStorage.setItem('vouchers', JSON.stringify(updated));
-          return updated;
-      }
-      return currentVouchers;
-    });
-  }, []);
-
-  useEffect(() => {
-    updateVoucherStatus();
-    const interval = setInterval(updateVoucherStatus, 60 * 60 * 1000); // Check every hour
-    return () => clearInterval(interval);
-  }, [updateVoucherStatus]);
-
   const handleLogin = async (username: string, password: string): Promise<boolean> => {
     const user = await login(username, password);
     if (user) {
